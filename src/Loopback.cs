@@ -63,7 +63,7 @@ namespace OrulabStudio
             }
         }
 
-        /// <summary>Berhenti lalu kembalikan WAV mono 16-bit (atau null bila tidak ada data).</summary>
+        /// <summary>Berhenti lalu kembalikan WAV stereo 16-bit (atau null bila tidak ada data).</summary>
         public static byte[] Selesai()
         {
             lock (kunci)
@@ -74,8 +74,8 @@ namespace OrulabStudio
                 var ms = new MemoryStream();
                 var bw = new BinaryWriter(ms);
                 bw.Write(new[] { 'R', 'I', 'F', 'F' }); bw.Write(36 + pcm.Length); bw.Write(new[] { 'W', 'A', 'V', 'E' });
-                bw.Write(new[] { 'f', 'm', 't', ' ' }); bw.Write(16); bw.Write((short)1); bw.Write((short)1);
-                bw.Write(rate); bw.Write(rate * 2); bw.Write((short)2); bw.Write((short)16);
+                bw.Write(new[] { 'f', 'm', 't', ' ' }); bw.Write(16); bw.Write((short)1); bw.Write((short)2);
+                bw.Write(rate); bw.Write(rate * 4); bw.Write((short)4); bw.Write((short)16);
                 bw.Write(new[] { 'd', 'a', 't', 'a' }); bw.Write(pcm.Length); bw.Write(pcm); bw.Flush();
                 return ms.ToArray();
             }
@@ -128,23 +128,22 @@ namespace OrulabStudio
                         adaData = true;
                         bool senyap = (flag & 0x2) != 0;
                         int bpf = ch * bits / 8;
+                        // simpan stereo: kanal kiri dan kanan (perangkat mono: kanal yang sama dua kali)
                         for (int i = 0; i < n; i++)
                         {
-                            float v = 0;
-                            if (!senyap)
+                            for (int c = 0; c < 2; c++)
                             {
-                                for (int c = 0; c < ch; c++)
+                                float v = 0;
+                                if (!senyap)
                                 {
-                                    IntPtr a = p + i * bpf + c * bits / 8;
-                                    if (apung && bits == 32) v += BitConverter.ToSingle(BitConverter.GetBytes(Marshal.ReadInt32(a)), 0);
-                                    else if (bits == 16) v += Marshal.ReadInt16(a) / 32768f;
-                                    else if (bits == 32) v += Marshal.ReadInt32(a) / 2147483648f;
-                                    else if (bits == 24) v += ((Marshal.ReadByte(a) | (Marshal.ReadByte(a + 1) << 8) | ((sbyte)Marshal.ReadByte(a + 2) << 16))) / 8388608f;
+                                    IntPtr a = p + i * bpf + Math.Min(c, ch - 1) * bits / 8;
+                                    if (apung && bits == 32) v = BitConverter.ToSingle(BitConverter.GetBytes(Marshal.ReadInt32(a)), 0);
+                                    else if (bits == 16) v = Marshal.ReadInt16(a) / 32768f;
+                                    else if (bits == 32) v = Marshal.ReadInt32(a) / 2147483648f;
+                                    else if (bits == 24) v = ((Marshal.ReadByte(a) | (Marshal.ReadByte(a + 1) << 8) | ((sbyte)Marshal.ReadByte(a + 2) << 16))) / 8388608f;
                                 }
-                                v /= ch;
+                                bw.Write((short)(int)Math.Round(Math.Max(-1f, Math.Min(1f, v)) * 32767f));
                             }
-                            int s = (int)Math.Round(Math.Max(-1f, Math.Min(1f, v)) * 32767f);
-                            bw.Write((short)s);
                         }
                         tertulis += n;
                         tangkap.ReleaseBuffer(n);
@@ -155,7 +154,7 @@ namespace OrulabStudio
                     if (!adaData && tertulis < harus - sr / 10)
                     {
                         long kurang = harus - sr / 20 - tertulis;
-                        for (long i = 0; i < kurang; i++) bw.Write((short)0);
+                        for (long i = 0; i < kurang * 2; i++) bw.Write((short)0);
                         tertulis += kurang;
                     }
                 }

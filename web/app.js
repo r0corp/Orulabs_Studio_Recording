@@ -3,7 +3,7 @@
 import * as dsp from "./dsp.js";
 import * as magic from "./magic.js";
 import * as ekspor from "./ekspor.js";
-import { t, aturBahasa, terapkan } from "./i18n.js";
+import { t, tDsp, aturBahasa, terapkan } from "./i18n.js";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -65,7 +65,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 100, fokusVokal: 0, mixRekaman: {}, vokalSaja: {}, keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, sinkronPerangkat: {}, mixVokal: 100, mixMusik: 100, fokusVokal: 0, mixRekaman: {}, vokalSaja: {}, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -182,6 +182,7 @@ function isiPengaturanAudio() {
   dropdown($("#ddBahasa"), { opsi: [{ nilai: "id", label: "Indonesia", ikon: "bi-translate" }, { nilai: "en", label: "English", ikon: "bi-translate" }], nilai: P.bahasa, kepala: t("pilihBahasa"),
     onPilih: (v) => { P.bahasa = v; aturBahasa(v); terapkanTema(); segarkanTeks(); simpanPengaturan(); } });
   apiJson("info").then((j) => ($("#folderRekaman").textContent = j.folder)).catch(() => {});
+  tampilKalibrasi();
 }
 $$("#pilihModeAudio button").forEach((b) => (b.onclick = () => { if (!M.rek && P.modeAudio !== b.dataset.mode) aktifkanMode(b.dataset.mode); }));
 
@@ -383,6 +384,7 @@ async function mulaiRekam() {
   M.jalurMusik = false;
   if (P.duaJalur && P.sinkronYt && YT.pemutar && YT.kini) {
     try { const j = await apiJson("musik/mulai", { method: "POST" }); M.jalurMusik = !!j.ok; if (!j.ok) toast(t("jalurGagal"), true); } catch { toast(t("jalurGagal"), true); }
+    if (M.jalurMusik && !M.notifDiingatkan) { M.notifDiingatkan = true; setTimeout(() => toast(t("notifPeringatan")), 1500); }
   }
   M.potongan = []; M.rek = true; M.mulai = performance.now();
   api("ping?rek=1").catch(() => {}); // beri tahu server: sedang merekam (update ditunda)
@@ -494,7 +496,7 @@ async function bukaRekaman(nama) {
 }
 
 function tampilkanRekaman(nama, data, rate) {
-  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0, asliMix: null, magicAktif: false, vokalMagic: null });
+  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, musikSt: null, geser: 0, asliMix: null, asliMixSt: null, studioSt: null, meta: {}, magicAktif: false, vokalMagic: null });
   $("#mvStatus").hidden = true; $("#kartuNada").hidden = true; tutupMagic(); Pm.bagian = false; setTimeout(tampilDaftarPotongan, 0);
   tampilMix();
   $("#gayaRapikan").hidden = true;
@@ -507,18 +509,47 @@ function tampilkanRekaman(nama, data, rate) {
   muatJalurMusik(nama);
 }
 
-/** Muat jalur musik rekaman 2 jalur, samakan sample rate, lalu cari keterlambatan vokal (sinkron). */
+// ================= Data per rekaman =================
+// Disimpan sebagai file JSON di folder "Data rekaman" (ikut pindah/ganti nama/hapus bersama rekamannya):
+// { jenis: "rekam" | "vokal" | "campur", mix: { v, m, g } }
+async function muatMeta(nama) {
+  try { R.meta = await apiJson("rekaman/meta?" + q({ nama })); } catch { R.meta = {}; }
+  return R.meta;
+}
+function simpanMeta(nama = R.nama, meta = R.meta) {
+  if (!nama || !meta) return Promise.resolve();
+  return api("rekaman/meta?" + q({ nama }), { method: "POST", body: JSON.stringify(meta) }).catch(() => {});
+}
+/** Pindahkan data per rekaman yang dulu disimpan di setelan umum (v1.2–1.4) ke file data per rekaman. */
+async function pindahkanDataLama() {
+  const lama = { mix: P.mixRekaman || {}, vokal: P.vokalSaja || {}, campur: P.imporCampur || {} };
+  const nama = new Set([...Object.keys(lama.mix), ...Object.keys(lama.vokal), ...Object.keys(lama.campur)]);
+  if (!nama.size) return;
+  for (const n of nama) {
+    if (n.startsWith("__uji") || !R.daftar.some((r) => r.nama === n)) continue; // sisa uji / rekaman yang sudah tidak ada
+    let m = {}; try { m = await apiJson("rekaman/meta?" + q({ nama: n })); } catch {}
+    if (lama.mix[n] && !m.mix) m.mix = lama.mix[n];
+    if (lama.vokal[n]) m.jenis = "vokal"; else if (lama.campur[n]) m.jenis = "campur";
+    await simpanMeta(n, m);
+  }
+  P.mixRekaman = {}; P.vokalSaja = {}; P.imporCampur = {}; simpanPengaturan();
+}
+
+/** Muat jalur musik rekaman 2 jalur (stereo bila ada), samakan sample rate, lalu cari keterlambatan vokal (sinkron). */
 async function muatJalurMusik(nama) {
+  await muatMeta(nama);
   const info = R.daftar.find((r) => r.nama === nama);
-  if (!info || !info.musik) return;
+  if (!info || !info.musik || R.nama !== nama) return;
   try {
     const buf = await (await api("rekaman/musik?" + q({ nama }))).arrayBuffer();
     const w = dsp.bacaWav(buf); if (!w || R.nama !== nama) return;
     R.musik = dsp.ubahRate(w.data, w.rate, R.rate);
+    R.musikSt = w.kanal ? w.kanal.map((k) => dsp.ubahRate(k, w.rate, R.rate)) : null;
     const auto = dsp.cariGeser(R.asli, R.musik, R.rate);
     // tanpa petunjuk dari rekaman: speaker kabel ±30 ms, Bluetooth ±200 ms
-    R.geser = auto != null ? auto : (/C-Media|Realtek|USB/i.test(P.profil[P.modeAudio].output || "") ? 30 : 200);
-    const simpan = (P.mixRekaman || {})[nama];
+    const spk = P.profil[P.modeAudio].output || "", kal = (P.sinkronPerangkat || {})[spk];
+    R.geser = auto != null ? auto : kal != null ? kal : (/C-Media|Realtek|USB/i.test(spk) ? 30 : 200);
+    const simpan = R.meta && R.meta.mix;
     if (simpan) { P.mixVokal = simpan.v; P.mixMusik = simpan.m; if (simpan.g != null) R.geser = simpan.g; R.mixAuto = false; }
     else { P.mixVokal = 100; R.mixAuto = true; }
     R.asliMix = null; tampilMix(); prosesUlang();
@@ -552,11 +583,9 @@ function tampilMix() {
 /** Ingat setelan mix untuk rekaman yang sedang dibuka (paling banyak 200 rekaman). */
 function simpanMix() {
   if (!R.nama || !R.musik) return;
-  P.mixRekaman = P.mixRekaman || {}; delete P.mixRekaman[R.nama];
-  P.mixRekaman[R.nama] = { v: P.mixVokal, m: P.mixMusik, g: R.geser };
-  const kunci = Object.keys(P.mixRekaman); if (kunci.length > 200) delete P.mixRekaman[kunci[0]];
+  R.meta = R.meta || {}; R.meta.mix = { v: P.mixVokal, m: P.mixMusik, g: R.geser }; simpanMeta();
 }
-const mixBerubah = tundaan(() => { R.asliMix = null; simpanMix(); simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
+const mixBerubah = tundaan(() => { R.asliMix = null; R.asliMixSt = null; simpanMix(); simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
 $("#mixVokal").addEventListener("input", (e) => { P.mixVokal = +e.target.value; tampilMix(); mixBerubah(); });
 $("#mixMusik").addEventListener("input", (e) => { P.mixMusik = +e.target.value; tampilMix(); mixBerubah(); });
 $("#fokusVokal").addEventListener("input", (e) => { P.fokusVokal = +e.target.value; tampilMix(); mixBerubah(); });
@@ -567,8 +596,7 @@ $("#btnGanti").onclick = async () => {
   if (!R.nama) return;
   const baru = await dialog({ judul: t("gantiNama"), input: R.nama, ok: t("ganti") });
   if (!baru || baru.trim() === R.nama) return;
-  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); if (P.vokalSaja && P.vokalSaja[R.nama]) { delete P.vokalSaja[R.nama]; P.vokalSaja[j.nama] = true; simpanPengaturan(); }
-    R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast(t("namaDiganti")); }
+  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast(t("namaDiganti")); }
   catch (e) { toast(e.message, true); }
 };
 $("#btnHapus").onclick = async () => {
@@ -722,12 +750,23 @@ function dataPutar() {
   }
   return dataTampil();
 }
+/** Versi stereo dari yang diputar (rekaman 2 jalur dengan musik stereo), atau null. */
+function dataPutarStereo() {
+  if (R.lihat === "studio") return R.studioSt;
+  if (R.musikSt && R.asli) {
+    if (!R.asliMixSt) R.asliMixSt = dsp.campurMentahStereo(R.asli, R.musikSt[0], R.musikSt[1], R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0 });
+    return R.asliMixSt;
+  }
+  return null;
+}
 async function putar() {
   const x = dataPutar();
   if (!x) { if (R.asli && R.lihat === "studio") toast(t("studioBelum")); return; }
   if (M.rek) return;
   await siapkanPemutar();
-  const b = Pm.ctx.createBuffer(1, x.length, R.rate); b.copyToChannel(x, 0);
+  const st = dataPutarStereo();
+  const b = Pm.ctx.createBuffer(st ? 2 : 1, x.length, R.rate);
+  if (st) { b.copyToChannel(st[0].subarray(0, x.length), 0); b.copyToChannel(st[1].subarray(0, x.length), 1); } else b.copyToChannel(x, 0);
   if (Pm.posisi >= x.length / R.rate - 0.05) Pm.posisi = 0;
   Pm.src = Pm.ctx.createBufferSource(); Pm.src.buffer = b; Pm.src.connect(Pm.vol);
   Pm.src.onended = () => { if (Pm.main) { Pm.main = false; Pm.posisi = 0; aturTombol(); gambarGelombang(); } };
@@ -835,7 +874,7 @@ async function siapkanAnalisaMagic() {
 $("#btnMagic").onclick = (e) => {
   e.stopPropagation();
   if (!R.asli) { toast(t("pilihDulu"), true); return; }
-  if (!R.musik && !bisaMagicTanpaMusik()) { toast(t(P.imporCampur && P.imporCampur[R.nama] ? "magicCampur" : "magicButuh2"), true); return; }
+  if (!R.musik && !bisaMagicTanpaMusik()) { toast(t(R.meta && R.meta.jenis === "campur" ? "magicCampur" : "magicButuh2"), true); return; }
   const pop = $("#mvPop");
   if (!pop.hidden) { tutupMagic(); return; }
   tutupDropdown(); pop.hidden = false; tampilMV();
@@ -940,8 +979,8 @@ $("#btnWa").onclick = async () => {
   const studio = R.lihat === "studio";
   if (studio && !R.studio) { toast(t("studioBelum")); return; }
   const b = $("#btnWa");
-  let data = studio ? R.studio : dataPutar();
-  if (!studio && potongAktif()) { const [p0, p1] = batasPotong(); data = data.slice(p0, p1); }
+  let data = studio ? (R.studioSt || R.studio) : (dataPutarStereo() || dataPutar());
+  if (!studio && potongAktif()) { const [p0, p1] = batasPotong(); data = Array.isArray(data) ? data.map((k) => k.slice(p0, p1)) : data.slice(p0, p1); }
   const dasar = R.nama.replace(/\s*\(Studio\)(\s*\(\d+\))?$/i, "") + (potongAktif() ? " " + labelPotong() : "") + (studio ? (R.magicAktif ? " (Magic Vocal)" : " (Studio)") : "");
   b.disabled = true; b.classList.add("sibuk"); toast(t("waMembuat"));
   try {
@@ -953,7 +992,7 @@ $("#btnWa").onclick = async () => {
 };
 
 /** Rekaman vokal saja (hasil impor) boleh memakai Magic Vocal walau tanpa jalur musik. */
-function bisaMagicTanpaMusik() { return !!(R.nama && P.vokalSaja && P.vokalSaja[R.nama]); }
+function bisaMagicTanpaMusik() { return !!(R.nama && R.meta && R.meta.jenis === "vokal"); }
 
 // ================= Impor rekaman =================
 async function bacaFileAudio(file) {
@@ -1003,8 +1042,7 @@ $("#btnImpor").onclick = () => {
       const nama = (m.querySelector("#imporNama").value || fR.name).trim();
       const j = await apiJson("rekaman/simpan?" + q({ nama }), { method: "POST", body: dsp.keWav(v.data, v.rate) });
       if (jenis === "pisah") { const mu = await bacaFileAudio(fM); await apiJson("rekaman/musik-simpan?" + q({ nama: j.nama }), { method: "POST", body: dsp.keWav(mu.data, mu.rate) }); }
-      if (jenis === "vokal") { P.vokalSaja = P.vokalSaja || {}; P.vokalSaja[j.nama] = true; }
-      P.imporCampur = P.imporCampur || {}; if (jenis === "campur") P.imporCampur[j.nama] = true; simpanPengaturan();
+      await simpanMeta(j.nama, { jenis: jenis === "pisah" ? "rekam" : jenis });
       tutup(); await muatDaftar(); toast(t("imporBerhasil") + ": " + j.nama);
       const el = $('#daftar .item[data-n="' + j.nama.replace(/"/g, '\\"') + '"] b'); if (el) el.click();
     } catch (e) { toast(t("imporGagal") + ": " + e.message, true); tombol.disabled = false; tombol.textContent = t("impor"); }
@@ -1057,17 +1095,57 @@ $("#ptSimpan").onclick = async () => {
   try {
     // potongan Asli: vokal dipotong + fade 10 ms; jalur musik (bila ada) ikut dipotong pada waktu yang sama
     const fade = (x) => { const f = Math.min(Math.floor(R.rate * 0.01), Math.floor(x.length / 4)); for (let i = 0; i < f; i++) { const g = i / f; x[i] *= g; x[x.length - 1 - i] *= g; } return x; };
-    const data = studio ? R.studio : fade(R.asli.slice(p0, p1));
+    const data = studio ? (R.studioSt || R.studio) : fade(R.asli.slice(p0, p1));
     const j = await apiJson("rekaman/simpan?" + q({ nama: dasar }), { method: "POST", body: dsp.keWav(data, R.rate) });
     if (!studio && R.musik) {
-      await apiJson("rekaman/musik-simpan?" + q({ nama: j.nama }), { method: "POST", body: dsp.keWav(fade(R.musik.slice(p0, Math.min(R.musik.length, p1))), R.rate) });
-      const mx = (P.mixRekaman || {})[R.nama]; if (mx) { P.mixRekaman[j.nama] = { ...mx }; }
+      await apiJson("rekaman/musik-simpan?" + q({ nama: j.nama }), { method: "POST", body: dsp.keWav(R.musikSt ? R.musikSt.map((k) => fade(k.slice(p0, Math.min(k.length, p1)))) : fade(R.musik.slice(p0, Math.min(R.musik.length, p1))), R.rate) });
     }
-    if (!studio && P.vokalSaja && P.vokalSaja[R.nama]) P.vokalSaja[j.nama] = true;
-    simpanPengaturan(); await muatDaftar(); tampilDaftarPotongan();
+    if (!studio && R.meta) await simpanMeta(j.nama, { ...R.meta });
+    await muatDaftar(); tampilDaftarPotongan();
     toast(t("ptTersimpan") + ": " + j.nama);
   } catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
   finally { b.disabled = false; }
+};
+
+// ================= Kalibrasi sinkron =================
+// Putar bunyi "tik" lewat speaker YouTube sambil merekam suara laptop (jalur musik) dan mic, dengan urutan yang sama
+// seperti saat merekam 2 jalur. Jeda tik di mic terhadap tik di jalur musik = nilai Sinkron yang tepat untuk speaker ini.
+function tampilKalibrasi() {
+  const spk = (P.profil[P.modeAudio] || {}).output || "", v = (P.sinkronPerangkat || {})[spk];
+  $("#kalNilai").textContent = v != null ? t("kalNilai").replace("{s}", spk.replace(/\(R\)/g, "")).replace("{ms}", v) : t("kalBelum");
+}
+$("#btnNotif").onclick = () => api("setelan-notifikasi", { method: "POST" }).catch(() => {});
+$("#btnKalibrasi").onclick = async () => {
+  if (M.rek || !M.stream || !M.stream.active) { toast(t("belumSiap"), true); return; }
+  if (!(await dialog({ judul: t("kalJudul"), teks: t("kalDialog"), ok: t("kalMulai") }))) return;
+  const tombol = $("#btnKalibrasi"), label = tombol.querySelector("span"); tombol.disabled = true; label.textContent = t("kalMengukur");
+  let rd = null, tr = null;
+  try {
+    const j = await apiJson("musik/mulai", { method: "POST" }); if (!j.ok) throw new Error(t("jalurGagal"));
+    // mic: langsung dari track (sama seperti merekam)
+    tr = M.stream.getAudioTracks()[0].clone(); rd = new MediaStreamTrackProcessor({ track: tr }).readable.getReader();
+    const potongan = []; let rateMic = 48000, jalan = true;
+    const baca = (async () => { while (jalan) { const { value, done } = await rd.read(); if (done) break; rateMic = value.sampleRate; const f = new Float32Array(value.numberOfFrames); value.copyTo(f, { planeIndex: 0, format: "f32-planar" }); value.close(); potongan.push(f); } })().catch(() => {});
+    // bunyi tik lewat speaker bawaan Windows (speaker YouTube)
+    const ac = new AudioContext(), mulai = ac.currentTime + 0.6;
+    for (let k = 0; k < 8; k++) {
+      const n = Math.round(ac.sampleRate * 0.004), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.9 * (1 - i / n);
+      const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(mulai + k * 0.45);
+    }
+    await tunggu(5000);
+    jalan = false; try { await rd.cancel(); } catch {} tr.stop(); await baca; ac.close();
+    const wav = await (await api("musik/ambil", { method: "POST" })).arrayBuffer();
+    const w = dsp.bacaWav(wav); if (!w) throw new Error(t("kalGagal"));
+    let mic = new Float32Array(potongan.reduce((x, c) => x + c.length, 0)), o = 0; for (const c of potongan) { mic.set(c, o); o += c.length; }
+    const lap = dsp.ubahRate(w.data, w.rate, rateMic);
+    const hasil = dsp.ukurJeda(lap, mic, rateMic);
+    if (!hasil) throw new Error(t("kalGagal"));
+    const spk = (P.profil[P.modeAudio] || {}).output || "";
+    P.sinkronPerangkat = P.sinkronPerangkat || {}; P.sinkronPerangkat[spk] = hasil.ms; simpanPengaturan(); tampilKalibrasi();
+    toast(t("kalBerhasil").replace("{ms}", hasil.ms));
+  } catch (e) { api("musik/batal", { method: "POST" }).catch(() => {}); toast(e.message, true); }
+  finally { tombol.disabled = false; label.textContent = t("kalTombol"); }
 };
 
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
@@ -1127,7 +1205,7 @@ $$("#preset button").forEach((b) => (b.onclick = () => { P.efek = { ...dsp.PRESE
 const prosesUlang = tundaan(async () => {
   if (!R.asli) return;
   const versi = ++R.versi;
-  R.studio = null; if (R.lihat === "studio") { if (Pm.main) hentikanPutar(); gambarGelombang(); }
+  R.studio = null; R.studioSt = null; if (R.lihat === "studio") { if (Pm.main) hentikanPutar(); gambarGelombang(); }
   $("#btnDengar span").textContent = t("memproses");
   try {
     let hasil = await dsp.prosesStudio(R.magicAktif && R.vokalMagic ? R.vokalMagic : R.asli, R.rate, { ...P.efek, fokus: R.musik ? 0 : P.fokusVokal }, R.awal, R.akhir);
@@ -1136,11 +1214,14 @@ const prosesUlang = tundaan(async () => {
       const mulai = Math.floor(R.awal * R.asli.length), akhir = Math.ceil(R.akhir * R.asli.length);
       const lv = dsp.levelAktif(hasil, R.rate), lm = dsp.levelAktif(R.musik, R.rate, mulai, akhir);
       P.mixMusik = Math.max(0, Math.min(150, Math.round(100 * Math.pow(10, (lv - 5 - lm) / 20) / 5) * 5));
-      R.mixAuto = false; R.asliMix = null; simpanMix(); tampilMix();
+      R.mixAuto = false; R.asliMix = null; R.asliMixSt = null; simpanMix(); tampilMix();
     }
-    if (R.musik) hasil = dsp.campurJalur(hasil, R.musik, R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0, awal: R.awal, akhir: R.akhir, panjangAsli: R.asli.length });
+    let st = null;
+    const opsiMix = { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0, awal: R.awal, akhir: R.akhir, panjangAsli: R.asli.length };
+    if (R.musik && R.musikSt) { st = dsp.campurJalurStereo(hasil, R.musikSt[0], R.musikSt[1], R.rate, opsiMix); hasil = dsp.keMonoDari(st); }
+    else if (R.musik) hasil = dsp.campurJalur(hasil, R.musik, R.rate, opsiMix);
     if (versi !== R.versi) return;
-    R.studio = hasil; if (R.lihat === "studio") gambarGelombang();
+    R.studio = hasil; R.studioSt = st; if (R.lihat === "studio") gambarGelombang();
   } catch (e) { toast(t("efekGagal") + ": " + e.message, true); }
   finally { if (versi === R.versi) $("#btnDengar span").textContent = t("dengar"); }
 }, 350);
@@ -1149,7 +1230,7 @@ $("#btnSimpanStudio").onclick = async () => {
   if (!R.asli) return;
   if (!R.studio) { toast(t("studioBelum")); return; }
   const dasar = R.nama.replace(/\s*\(Studio\)(\s*\(\d+\))?$/i, "");
-  try { const j = await apiJson("rekaman/simpan?" + q({ nama: dasar + " (Studio)" }), { method: "POST", body: dsp.keWav(R.studio, R.rate) }); await muatDaftar(); toast(t("studioTersimpan") + ": " + j.nama); }
+  try { const j = await apiJson("rekaman/simpan?" + q({ nama: dasar + " (Studio)" }), { method: "POST", body: dsp.keWav(R.studioSt || R.studio, R.rate) }); await muatDaftar(); toast(t("studioTersimpan") + ": " + j.nama); }
   catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
 };
 
@@ -1175,7 +1256,7 @@ $("#btnRapikan").onclick = async () => {
   // tunggu hasil studio selesai diproses
   for (let i = 0; i < 100 && !R.studio; i++) await tunggu(100);
   b.disabled = false; $("#btnRapikan span").textContent = t("rapikanOto");
-  toast(t("dirapikan") + ". " + s.pesan.replace(/^Setelan otomatis:\s*/i, ""));
+  toast(t("dirapikan") + ". " + tDsp(s.pesan.replace(/^Setelan otomatis:\s*/i, "").replace(" " + t("dipotongSenyap"), "")) + (s.pesan.includes(t("dipotongSenyap")) ? " " + t("dipotongSenyap") : ""));
 };
 
 // ================= Analisa =================
@@ -1187,11 +1268,12 @@ function tampilkanAnalisa() {
     $("#tip div").textContent = t("pilihUntukAnalisa"); return;
   }
   const n = dsp.nilaiAnalisa(h);
-  set("#stPecah", ...n.kartu.pecah); set("#stSenyap", ...n.kartu.senyap); set("#stBass", ...n.kartu.bass); set("#stJelas", ...n.kartu.jelas);
+  const tr = (k) => [tDsp(k[0]), tDsp(k[1]), k[2]];
+  set("#stPecah", ...tr(n.kartu.pecah)); set("#stSenyap", ...tr(n.kartu.senyap)); set("#stBass", ...tr(n.kartu.bass)); set("#stJelas", ...tr(n.kartu.jelas));
   const pita = [["Getaran", "<80 Hz", h.getaran, false], ["Bass", "80–300", h.bass, h.bass <= 50], ["Badan", "300–1,2k", h.badan, true], ["Jelas", "1,2–5k", h.kejelasan, h.kejelasan >= 10], ["Udara", ">5k", h.udara, false]];
   $("#bands").innerHTML = pita.map(([nama, ket, v, ok]) => '<div class="band"><strong>' + Math.round(v) + '%</strong><div class="b' + (ok ? " ok" : "") + '" style="height:' + Math.max(3, Math.min(100, v * 1.3)) + '%"></div><small>' + nama + "<br>" + esc(ket) + "</small></div>").join("");
   $("#tip").style.background = n.bagus ? "" : "rgba(251,191,36,.12)"; $("#tip").style.borderColor = n.bagus ? "" : "rgba(251,191,36,.35)";
-  $("#tip div").innerHTML = n.saran.map((s, i) => (i === 0 && n.bagus ? "<b>" + esc(s) + "</b>" : "• " + esc(s))).join("<br>");
+  $("#tip div").innerHTML = n.saran.map((s, i) => (i === 0 && n.bagus ? "<b>" + esc(tDsp(s)) + "</b>" : "• " + esc(tDsp(s)))).join("<br>");
 }
 
 // ================= YouTube: pemutar + kolom seperti YouTube asli =================
@@ -1511,6 +1593,14 @@ function segarkanTeks() {
   if (!R.nama) $("#namaRekaman").textContent = t("belumDipilih"); else $("#namaRekaman").textContent = R.nama;
   if (!M.rek) { $("#timerKet").textContent = t("tekanRekam"); $("#recPill span").textContent = t("siap"); }
   perbaruiTombolYt(); perbaruiRingkas(); perbaruiSiap(); tampilkanKolom(); muatDaftar(); tampilkanAnalisa(); gambarGelombang();
+  // teks yang dihitung (bukan data-t): ringkasan level, status Magic Vocal, tampilan Magic Vocal & kalibrasi
+  tampilRingkasLevel(); tampilKalibrasi(); if (!$("#mvPop").hidden) tampilMV();
+  if (R.magicAktif && MV.ren) {
+    const st = MV.ren.stat;
+    $("#mvStatusJudul").textContent = t("magicVocal") + ": " + $('#mvTingkat [data-tk="' + MV.tingkat + '"] b').textContent;
+    $("#mvStatusKet").textContent = t("mvKet").replace("{n}", st.nadaDikoreksi).replace("{a}", st.falsSebelum).replace("{b}", MV.langkah.nada ? st.falsSesudah : st.falsSebelum).replace("{k}", namaKunci(MV.kunci));
+    tampilGrafikNada();
+  }
   $("#btnDengar span").textContent = t("dengar");
   if (laci.classList.contains("buka")) isiPengaturanAudio();
 }
@@ -1523,9 +1613,11 @@ function segarkanTeks() {
   aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar(); aturSamping(P.sampingTutup); if (P.modeKerja !== "youtube") P.modeKerja = "rekam"; tampilModeKerja();
   segarkanTeks();
   await Promise.all([muatDaftar(), muatPustaka(), muatAudio()]);
+  pindahkanDataLama();
   tampilkanKolom();
   // Langsung tersambung: aktifkan mode audio terakhir (Studio Rumah / Laptop)
-  await aktifkanMode(P.modeAudio, true);
+  // ?tes=1 (tes otomatis): jangan mengubah perangkat audio bawaan Windows
+  if (!new URLSearchParams(location.search).has("tes")) await aktifkanMode(P.modeAudio, true); else await isiPerangkatBrowser();
   // Ping supaya server tahu jendela masih terbuka; sekaligus cek versi server.
   // Bila versi berubah (aplikasi baru diperbarui), muat ulang supaya tampilan ikut versi baru.
   let versiAwal = null;

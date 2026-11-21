@@ -20,10 +20,14 @@ dan English.
   supaya tidak pecah, tanpa membuat volume naik-turun mengikuti ketukan drum.
 - **Rekam bersama YouTube**: tekan Rekam dan lagu ikut jalan, tekan Stop dan lagu ikut berhenti,
   lagu selesai maka rekaman ikut selesai. Rekaman otomatis dinamai sesuai judul lagu.
-- **Rekam 2 jalur**: vokal direkam dari mic, musik YouTube direkam langsung dari laptop (digital,
-  jernih). Sesudah merekam, atur volume **Vokal** dan **Musik** sendiri-sendiri, geser **Sinkron**
-  bila speaker Bluetooth terlambat, lalu simpan sebagai satu lagu. Rekaman 1 jalur lama tetap bisa
+- **Rekam 2 jalur**: vokal direkam dari mic, musik YouTube direkam langsung dari laptop dalam
+  **stereo** (digital, jernih). Sesudah merekam, atur volume **Vokal** dan **Musik** sendiri-sendiri,
+  geser **Sinkron** bila perlu, lalu simpan sebagai satu lagu stereo. Rekaman 1 jalur lama tetap bisa
   diatur lewat slider **Keseimbangan** (Musik ↔ Vokal).
+- **Kalibrasi sinkron**: sekali per speaker, aplikasi memutar bunyi "tik" dan mengukur jedanya sampai
+  terdengar mic (misalnya keterlambatan Bluetooth), lalu memakainya untuk rekaman 2 jalur berikutnya.
+- **Jangan Ganggu**: pengingat dan tombol ke setelan notifikasi Windows, karena suara notifikasi
+  laptop ikut terekam di jalur musik.
 - **Mode audio, sekali klik**:
   - **Studio Rumah**: mixer + converter, suara keluar lewat Bluetooth mixer.
   - **Laptop**: mic dan speaker laptop saja.
@@ -62,19 +66,23 @@ dan English.
 
 ## Screenshot
 
-| Tampilan utama (playlist + berikutnya) | Halaman channel |
+| Tampilan utama | Magic Vocal |
 |---|---|
-| ![Tampilan utama](docs/screenshots/01-utama.png) | ![Channel](docs/screenshots/02-channel.png) |
+| ![Tampilan utama](docs/screenshots/01-utama.png) | ![Magic Vocal](docs/screenshots/02-magic-vocal.png) |
 
-| Playlist saya | Pengaturan |
+| Grafik nada vokal (Analisa) | Potong |
 |---|---|
-| ![Playlist saya](docs/screenshots/03-playlist-saya.png) | ![Pengaturan](docs/screenshots/04-pengaturan.png) |
+| ![Grafik nada](docs/screenshots/03-grafik-nada.png) | ![Potong](docs/screenshots/04-potong.png) |
 
-| English + mode terang | Layar kecil |
+| Pengaturan | English + mode terang |
 |---|---|
-| ![English](docs/screenshots/05-english-terang.png) | ![Layar kecil](docs/screenshots/06-layar-kecil.png) |
+| ![Pengaturan](docs/screenshots/05-pengaturan.png) | ![English](docs/screenshots/06-english-terang.png) |
 
-> Rekaman pada screenshot adalah contoh (suara sintetis), bukan rekaman sungguhan.
+| Layar kecil |
+|---|
+| ![Layar kecil](docs/screenshots/07-layar-kecil.png) |
+
+> Rekaman pada screenshot adalah contoh (suara sintetis buatan `tests/screenshot.mjs`), bukan rekaman sungguhan.
 
 ## Rangkaian Studio Rumah
 
@@ -169,7 +177,17 @@ Untuk sekalian memasang atau memperbarui aplikasi di laptop ini:
 .\build.ps1 -Pasang
 ```
 
-### 4. Rilis
+### 4. Tes
+
+```powershell
+node tests/unit.mjs      # mesin suara (WAV, sinkron, Magic Vocal, pembersih, campur stereo)
+node tests/e2e.mjs       # aplikasi hasil build di Chrome tanpa jendela, folder data sementara
+node tests/screenshot.mjs  # buat ulang screenshot README
+```
+
+Semua tes memakai data buatan dan tidak menyentuh rekaman atau setelan pengguna. Lihat `tests/README.md`.
+
+### 5. Rilis
 
 1. Naikkan `Versi` di `src/Server.cs`.
 2. Jalankan `.\build.ps1`.
@@ -189,6 +207,10 @@ Untuk sekalian memasang atau memperbarui aplikasi di laptop ini:
 | `web/app.js` | Logika: YouTube, perekam, rekaman, studio, analisa, mode audio, pengaturan |
 | `web/dsp.js` | Analisa rekaman, efek studio, WAV |
 | `web/i18n.js` | Kamus Bahasa Indonesia dan English |
+| `web/magic.js` | Magic Vocal: kunci lagu, lacak nada, koreksi nada (PSOLA), penyetara dinamika |
+| `web/ekspor.js` | Ekspor M4A (AAC) untuk WhatsApp |
+| `src/Loopback.cs` | Rekam suara laptop (jalur musik, stereo) |
+| `tests/` | Tes unit, tes menyeluruh, dan pembuat screenshot |
 | `docs/` | Screenshot dan mockup desain |
 
 ## Catatan

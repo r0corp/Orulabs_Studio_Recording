@@ -4,8 +4,9 @@
 const db = (x) => (x <= 0 ? -120 : 20 * Math.log10(x));
 
 // ================= WAV =================
-/** Ubah Float32Array mono menjadi file WAV PCM 16-bit. */
+/** Ubah Float32Array mono (atau [kiri, kanan] untuk stereo) menjadi file WAV PCM 16-bit. */
 export function keWav(sampel, rate) {
+  if (Array.isArray(sampel)) return keWavStereo(sampel[0], sampel[1], rate);
   const n = sampel.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
   const tulis = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
   tulis(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); tulis(8, "WAVE");
@@ -19,7 +20,21 @@ export function keWav(sampel, rate) {
   return new Blob([buf], { type: "audio/wav" });
 }
 
-/** Baca WAV PCM 16-bit (mono/stereo) menjadi { data: Float32Array mono, rate }. Null bila format lain. */
+function keWavStereo(L, R, rate) {
+  const n = Math.min(L.length, R.length), buf = new ArrayBuffer(44 + n * 4), v = new DataView(buf);
+  const tulis = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  tulis(0, "RIFF"); v.setUint32(4, 36 + n * 4, true); tulis(8, "WAVE");
+  tulis(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true);
+  tulis(36, "data"); v.setUint32(40, n * 4, true);
+  for (let i = 0, o = 44; i < n; i++, o += 4) {
+    const a = Math.max(-1, Math.min(1, L[i])), b = Math.max(-1, Math.min(1, R[i]));
+    v.setInt16(o, a < 0 ? a * 32768 : a * 32767, true); v.setInt16(o + 2, b < 0 ? b * 32768 : b * 32767, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+/** Baca WAV PCM 16-bit menjadi { data: Float32Array mono, rate, kanal: [kiri, kanan] bila stereo }. Null bila format lain. */
 export function bacaWav(arrayBuffer) {
   const v = new DataView(arrayBuffer);
   const teks = (o) => String.fromCharCode(v.getUint8(o), v.getUint8(o + 1), v.getUint8(o + 2), v.getUint8(o + 3));
@@ -31,11 +46,13 @@ export function bacaWav(arrayBuffer) {
     else if (id === "data") {
       if (format !== 1 || bit !== 16) return null;
       const n = Math.floor(Math.min(len, arrayBuffer.byteLength - o - 8) / 2 / kanal), out = new Float32Array(n);
+      const L = kanal > 1 ? new Float32Array(n) : null, R = kanal > 1 ? new Float32Array(n) : null;
       for (let i = 0, p = o + 8; i < n; i++) {
-        let s = 0; for (let c = 0; c < kanal; c++, p += 2) s += v.getInt16(p, true);
+        let s = 0;
+        for (let c = 0; c < kanal; c++, p += 2) { const x = v.getInt16(p, true); s += x; if (c === 0 && L) L[i] = x / 32768; else if (c === 1 && R) R[i] = x / 32768; }
         out[i] = s / kanal / 32768;
       }
-      return { data: out, rate };
+      return L ? { data: out, rate, kanal: [L, R] } : { data: out, rate };
     }
     o += 8 + len + (len & 1);
   }
@@ -586,4 +603,59 @@ export function bersihkanPegangan(x, rate) {
   for (let i = 0; i < n; i++) { const t = target[Math.min(nb - 1, Math.floor(i / blok))]; g = t < g ? t + (g - t) * turun : t + (g - t) * naik; out[i] = x[i] - redam[i] * (1 - g); }
   out.jumlahDentuman = jumlah;
   return out;
+}
+
+// ================= Hasil stereo (rekaman 2 jalur) =================
+/** Pembatas bertaut untuk stereo: gain dihitung dari kanal yang paling keras lalu dipakai ke kedua kanal. */
+function keraskanStereo(L, R, rate, targetDb, maksTekanDb) {
+  const n = L.length, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) c[i] = Math.max(Math.abs(L[i]), Math.abs(R[i]));
+  const k = keraskan(c, rate, targetDb, maksTekanDb), oL = new Float32Array(n), oR = new Float32Array(n);
+  let g = 1;
+  for (let i = 0; i < n; i++) { if (c[i] > 1e-6) g = k[i] / c[i]; oL[i] = L[i] * g; oR[i] = R[i] * g; }
+  return [oL, oR];
+}
+/** Campur vokal (mono, di tengah) dengan musik stereo. Sama seperti campurJalur, hasilnya [kiri, kanan]. */
+export function campurJalurStereo(vokal, musikL, musikR, rate, o) {
+  const mulai = Math.floor(o.awal * o.panjangAsli), akhir = Math.ceil(o.akhir * o.panjangAsli), panjang = akhir - mulai;
+  const n = Math.max(vokal.length, panjang), L = new Float32Array(n), Rr = new Float32Array(n), geser = Math.round(o.geserMs / 1000 * rate);
+  const fade = Math.min(Math.floor(rate * 0.3), Math.floor(panjang / 4));
+  for (let i = 0; i < n; i++) {
+    let ml = 0, mr = 0;
+    if (i < panjang) { const j = mulai + i - geser; if (j >= 0 && j < musikL.length) { ml = musikL[j]; mr = musikR[j]; } const g = i < fade ? i / fade : i > panjang - fade ? Math.max(0, (panjang - i) / fade) : 1; ml *= g; mr *= g; }
+    const v = (vokal[i] || 0) * o.volV;
+    L[i] = v + ml * o.volM; Rr[i] = v + mr * o.volM;
+  }
+  return keraskanStereo(L, Rr, rate, -14, 4);
+}
+/** Campuran mentah stereo untuk tampilan Asli. */
+export function campurMentahStereo(vokal, musikL, musikR, rate, o) {
+  const n = vokal.length, L = new Float32Array(n), R = new Float32Array(n), geser = Math.round(o.geserMs / 1000 * rate);
+  let p = 0;
+  for (let i = 0; i < n; i++) { const j = i - geser, ada = j >= 0 && j < musikL.length, v = vokal[i] * o.volV; L[i] = v + (ada ? musikL[j] : 0) * o.volM; R[i] = v + (ada ? musikR[j] : 0) * o.volM; p = Math.max(p, Math.abs(L[i]), Math.abs(R[i])); }
+  if (p > 0.98) { const g = 0.98 / p; for (let i = 0; i < n; i++) { L[i] *= g; R[i] *= g; } }
+  return [L, R];
+}
+/** Gabung [kiri, kanan] menjadi mono (untuk gelombang dan analisa). */
+export function keMonoDari(st) { const [L, R] = st, o = new Float32Array(L.length); for (let i = 0; i < o.length; i++) o[i] = (L[i] + R[i]) / 2; return o; }
+
+/**
+ * Ukur jeda (ms) sinyal b terhadap a dari bunyi tik. Dengung dibuang (selisih sampel), lalu energi per 1 ms
+ * dikorelasikan untuk jeda 0..800 ms. Puncak harus menonjol (> 5 simpangan baku di atas rata-rata).
+ * Mengembalikan { ms, yakin } atau null bila tik tidak terdengar jelas di b.
+ */
+export function ukurJeda(a, b, rate) {
+  const win = Math.max(1, Math.round(rate / 1000)), n = Math.floor(Math.min(a.length, b.length) / win) - 1;
+  if (n < 1000) return null;
+  const env = (x) => { const e = new Float32Array(n); for (let w = 0; w < n; w++) { let t = 0; for (let i = w * win + 1; i <= (w + 1) * win; i++) { const v = x[i] - x[i - 1]; t += v * v; } e[w] = t; } return e; };
+  const ea = env(a), eb = env(b);
+  // kurangi rata-rata sekitar (±50 ms) supaya derau tetap tidak ikut berkorelasi
+  const tengah = (e) => { const o = new Float32Array(e.length); let s = 0; const R = 50; for (let i = 0; i < Math.min(e.length, R); i++) s += e[i];
+    for (let i = 0; i < e.length; i++) { if (i + R < e.length) s += e[i + R]; if (i - R - 1 >= 0) s -= e[i - R - 1]; const c = Math.min(e.length, i + R + 1) - Math.max(0, i - R); o[i] = Math.max(0, e[i] - s / c); } return o; };
+  const A = tengah(ea), B = tengah(eb), kor = new Float64Array(801);
+  for (let L = 0; L <= 800; L++) { let s = 0; for (let k = 0; k + L < n; k++) s += A[k] * B[k + L]; kor[L] = s; }
+  let mx = 0, lag = 0, rata = 0; for (let L = 0; L <= 800; L++) { rata += kor[L]; if (kor[L] > mx) { mx = kor[L]; lag = L; } } rata /= 801;
+  let v = 0; for (let L = 0; L <= 800; L++) v += (kor[L] - rata) ** 2; const sb = Math.sqrt(v / 801) || 1e-12;
+  const z = (mx - rata) / sb;
+  return z > 5 ? { ms: lag, yakin: z } : null;
 }

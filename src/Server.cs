@@ -18,7 +18,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.4.0";
+        public const string Versi = "1.5.0";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -91,14 +91,17 @@ namespace OrulabStudio
             th.SetApartmentState(System.Threading.ApartmentState.STA); th.Start(); th.Join();
             return hasil;
         }
+        static string dataTes; // --data <folder>: folder data terpisah (untuk tes, tidak menyentuh data pengguna)
         static string FolderData
         {
-            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrulabStudio"); }
+            get { return dataTes ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrulabStudio"); }
         }
 
         [STAThread]
         static int Main(string[] args)
         {
+            int idt = Array.IndexOf(args, "--data");
+            if (idt >= 0 && idt + 1 < args.Length) { dataTes = Path.GetFullPath(args[idt + 1]); Directory.CreateDirectory(dataTes); }
             int ip = Array.IndexOf(args, "--port"); int portTes;
             if (ip >= 0 && ip + 1 < args.Length && int.TryParse(args[ip + 1], out portTes)) Port = portTes;
             folderWeb = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
@@ -275,6 +278,28 @@ namespace OrulabStudio
                     KirimJson(res, 200, "{\"ok\":true,\"nama\":" + J(nama + ".m4a") + "}"); return;
                 }
 
+                case "rekaman/meta":
+                {
+                    string f = PathMeta(q["nama"]);
+                    if (f.Length == 0) { KirimJson(res, 400, "{\"galat\":\"Nama kosong\"}"); return; }
+                    if (req.HttpMethod == "POST")
+                    {
+                        string isi = BacaBody(req);
+                        Directory.CreateDirectory(FolderMeta);
+                        lock (kunciFile) File.WriteAllText(f, isi, new UTF8Encoding(false));
+                        KirimJson(res, 200, "{\"ok\":true}"); return;
+                    }
+                    string teks; lock (kunciFile) teks = File.Exists(f) ? File.ReadAllText(f, Encoding.UTF8) : "{}";
+                    KirimJson(res, 200, teks.Trim().Length == 0 ? "{}" : teks); return;
+                }
+                case "musik/ambil":
+                {
+                    // berhenti merekam suara laptop dan kirim WAV-nya langsung (dipakai kalibrasi sinkron, tidak disimpan)
+                    byte[] wav = RekamSuaraLaptop.Selesai();
+                    if (wav == null) { Kirim(res, 404, "text/plain", "Tidak ada"); return; }
+                    res.StatusCode = 200; res.ContentType = "audio/wav"; res.ContentLength64 = wav.Length; res.OutputStream.Write(wav, 0, wav.Length); return;
+                }
+
                 case "rekaman/ganti-nama":
                 {
                     string lama = PathRekaman(q["lama"]);
@@ -285,13 +310,15 @@ namespace OrulabStudio
                     File.Move(lama, tujuan);
                     string mLama = PathMusik(q["lama"]);
                     if (File.Exists(mLama)) { string mBaru = Path.Combine(FolderMusik, baru + ".wav"); if (!File.Exists(mBaru)) File.Move(mLama, mBaru); }
+                    string dLama = PathMeta(q["lama"]);
+                    if (File.Exists(dLama)) { string dBaru = Path.Combine(FolderMeta, baru + ".json"); if (!File.Exists(dBaru)) File.Move(dLama, dBaru); }
                     KirimJson(res, 200, "{\"nama\":" + J(baru) + "}"); return;
                 }
 
                 case "rekaman/hapus":
                 {
                     // Dipindah ke Recycle Bin, bukan dihapus permanen (vokal dan jalur musiknya).
-                    foreach (string f in new[] { PathRekaman(q["nama"]), PathMusik(q["nama"]) })
+                    foreach (string f in new[] { PathRekaman(q["nama"]), PathMusik(q["nama"]), PathMeta(q["nama"]) })
                         if (File.Exists(f))
                             Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(f, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
                                 Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
@@ -373,6 +400,11 @@ namespace OrulabStudio
                         + ",\"bawaanInput\":" + J(PerangkatAudio.Bawaan(1)) + "}");
                     return;
                 }
+
+                case "setelan-notifikasi":
+                    // halaman Notifikasi (Jangan Ganggu) di Settings Windows
+                    try { Process.Start("ms-settings:notifications"); } catch { }
+                    KirimJson(res, 200, "{\"ok\":true}"); return;
 
                 case "setelan-suara":
                     // Buka halaman Sound di Settings Windows (untuk mematikan Audio enhancements pada mic)
@@ -490,6 +522,14 @@ namespace OrulabStudio
         static string FolderMusik { get { return Path.Combine(FolderRekaman, "Jalur musik"); } }
 
         static DateTime rekamTerakhir = DateTime.MinValue;
+
+        /// <summary>Data per rekaman (setelan mix, sinkron, jenis rekaman), satu file JSON per rekaman.</summary>
+        static string FolderMeta { get { return Path.Combine(FolderRekaman, "Data rekaman"); } }
+        static string PathMeta(string nama)
+        {
+            string b = Bersihkan(nama ?? "");
+            return b.Length == 0 ? "" : Path.Combine(FolderMeta, b + ".json");
+        }
 
         static string PathMusik(string nama)
         {
