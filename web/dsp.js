@@ -466,6 +466,8 @@ export function potong(x, rate, awal, akhir) {
  */
 export async function prosesStudio(x, rate, s, awal = 0, akhir = 1) {
   let y = potong(x, rate, awal, akhir);
+  // redam krenget pegangan mic (dentuman bass mendadak); suara bersih tidak berubah
+  if (s.bersihPegangan !== false) y = bersihkanPegangan(y, rate);
   if (s.desisAktif && s.desis > 0) y = gerbangDerau(y, rate, s.desis / 100);
   if (s.nada) y = geserNada(y, s.nada);
   y = await rantaiWebAudio(y, rate, s);
@@ -547,4 +549,41 @@ export function campurMentah(vokal, musik, rate, o) {
   for (let i = 0; i < y.length; i++) { const j = i - geser; const v = vokal[i] * o.volV + (j >= 0 && j < musik.length ? musik[j] : 0) * o.volM; y[i] = v; const a = v < 0 ? -v : v; if (a > p) p = a; }
   if (p > 0.98) { const g = 0.98 / p; for (let i = 0; i < y.length; i++) y[i] *= g; }
   return y;
+}
+
+// ================= Pembersih suara pegangan mic =================
+/**
+ * Redam "krenget" pegangan mic: dentuman mendadak yang isinya hampir semua nada rendah (< 200 Hz),
+ * misalnya jari bergeser atau mic tersentuh. Suara nyanyian (termasuk bass suara) tidak diubah.
+ * Ciri dentuman per blok 5 ms: naik > 10 dB dari sekitarnya DAN > 85% energinya di bawah 200 Hz.
+ */
+export function bersihkanPegangan(x, rate) {
+  const n = x.length, al = 1 - Math.exp(-2 * Math.PI * 200 / rate), al2 = 1 - Math.exp(-2 * Math.PI * 300 / rate);
+  // deteksi: low-pass 200 Hz (2 tingkat). Peredaman: pita di bawah ±300 Hz (4 tingkat, maju-mundur supaya tanpa geser waktu)
+  const rendah = new Float32Array(n); let s1 = 0, s2 = 0;
+  for (let i = 0; i < n; i++) { s1 += (x[i] - s1) * al; s2 += (s1 - s2) * al; rendah[i] = s2; }
+  const redam = new Float32Array(n); let q1 = 0, q2 = 0;
+  for (let i = 0; i < n; i++) { q1 += (x[i] - q1) * al2; q2 += (q1 - q2) * al2; redam[i] = q2; }
+  q1 = 0; q2 = 0; for (let i = n - 1; i >= 0; i--) { q1 += (redam[i] - q1) * al2; q2 += (q1 - q2) * al2; redam[i] = q2; }
+  const blok = Math.max(1, Math.round(rate * 0.005)), nb = Math.floor(n / blok);
+  if (nb < 20) return x.slice();
+  const tot = new Float32Array(nb), low = new Float32Array(nb);
+  for (let b = 0; b < nb; b++) { let t = 0, u = 0; for (let i = b * blok; i < (b + 1) * blok; i++) { t += x[i] * x[i]; u += rendah[i] * rendah[i]; } tot[b] = Math.sqrt(t / blok); low[b] = Math.sqrt(u / blok); }
+  const target = new Float32Array(nb).fill(1); let sisa = 0, jumlah = 0;
+  for (let b = 0; b < nb; b++) {
+    // acuan: median 300 ms sebelumnya
+    const w = []; for (let k = Math.max(0, b - 60); k < b; k += 2) w.push(tot[k]);
+    w.sort((p, q) => p - q); const acuan = (w.length ? w[Math.floor(w.length / 2)] : tot[b]) + 1e-5;
+    const rasioRendah = low[b] / (tot[b] + 1e-9);
+    if (tot[b] > acuan * 3.2 && rasioRendah > 0.85) {   // dentuman: redam dari 5 ms sebelum sampai 60 ms sesudah
+      if (!sisa) jumlah++; sisa = 12; if (b) target[b - 1] = Math.min(target[b - 1], 0.06);
+    }
+    if (sisa > 0) { target[b] = 0.06; sisa--; }
+  }
+  // haluskan: turun 2 ms, naik 40 ms
+  const out = new Float32Array(n), turun = Math.exp(-1 / (rate * 0.001)), naik = Math.exp(-1 / (rate * 0.03));
+  let g = 1;
+  for (let i = 0; i < n; i++) { const t = target[Math.min(nb - 1, Math.floor(i / blok))]; g = t < g ? t + (g - t) * turun : t + (g - t) * naik; out[i] = x[i] - redam[i] * (1 - g); }
+  out.jumlahDentuman = jumlah;
+  return out;
 }
