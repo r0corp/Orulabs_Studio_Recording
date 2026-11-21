@@ -516,7 +516,8 @@ function tampilRingkasLevel() {
   const el = $("#ringkasLevel"), L = R.levelInfo;
   if (!L) { el.hidden = true; return; }
   let kelas = "ok", teks;
-  if (L.bahaya > 0) { kelas = "bahaya"; teks = t("lvBahaya").replace("{n}", L.bahaya); }
+  // 1-2 detik menyentuh batas masih wajar (pembatas aplikasi menanganinya); mulai 3 detik baru diperingatkan
+  if (L.bahaya >= 3) { kelas = "bahaya"; teks = t("lvBahaya").replace("{n}", L.bahaya); }
   else if (L.pelan > 40) { kelas = "pelan"; teks = t("lvPelan"); }
   else if (L.ideal >= 70) teks = t("lvIdeal").replace("{p}", L.ideal);
   else { kelas = "pelan"; teks = t("lvCukup").replace("{p}", L.ideal); }
