@@ -121,11 +121,11 @@ function tebakProfil() {
   const rumahOut = (AUDIO.bawaanOutput && !/YA USB|USB Audio|AI Noise/i.test(AUDIO.bawaanOutput) && AUDIO.bawaanOutput !== laptopOut && AUDIO.bawaanOutput)
     || cari(AUDIO.output, /.*/, /YA USB|USB Audio|AI Noise|C-Media|Realtek/i);
   const p = P.profil;
-  if (!p.rumah.input) p.rumah.input = rumahIn;
+  if (!p.rumah.input) p.rumah.input = rumahIn || laptopIn;
   if (!p.rumah.output) p.rumah.output = rumahOut;
   if (!p.laptop.input) p.laptop.input = laptopIn;
   if (!p.laptop.output) p.laptop.output = laptopOut;
-  if (!p.rumah.putar) p.rumah.putar = laptopOut || p.rumah.output;
+  if (!p.rumah.putar) p.rumah.putar = (p.rumah.input && p.rumah.input === laptopIn) ? p.rumah.output : (laptopOut || p.rumah.output);
   if (!p.laptop.putar) p.laptop.putar = p.laptop.output;
 }
 
@@ -501,6 +501,8 @@ function hentikanPutar(simpanPosisi = true) {
 setInterval(() => { if (Pm.main) gambarGelombang(); }, 80);
 $("#btnPutar").onclick = () => (Pm.main ? hentikanPutar() : putar());
 $("#btnDengar").onclick = () => { if (!R.asli) { toast(t("pilihDulu"), true); return; } setLihat("studio"); putar(); };
+
+$("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
 $("#btnTesSuara").onclick = async () => {

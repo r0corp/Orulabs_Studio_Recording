@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.1.8";
+        public const string Versi = "1.1.9";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -256,6 +256,11 @@ namespace OrulabStudio
                         + ",\"bawaanInput\":" + J(PerangkatAudio.Bawaan(1)) + "}");
                     return;
                 }
+
+                case "setelan-suara":
+                    // Buka halaman Sound di Settings Windows (untuk mematikan Audio enhancements pada mic)
+                    try { Process.Start("ms-settings:sound"); } catch { Process.Start("control.exe", "mmsys.cpl,,1"); }
+                    KirimJson(res, 200, "{\"ok\":true}"); return;
 
                 case "versi":
                     KirimJson(res, 200, "{\"versi\":" + J(Versi) + "}"); return;

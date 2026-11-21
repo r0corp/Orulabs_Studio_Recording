@@ -328,7 +328,16 @@ function keraskan(x, rate, targetDb = -15, maksTekanDb = 6) {
 }
 
 /** Keraskan rekaman mentah ke level pas (rata-rata -18 dB) tanpa pecah. Dipakai "Keraskan otomatis saat merekam". */
-export function keraskanRekaman(x, rate) { return keraskan(x, rate, -18, 3); }
+export function keraskanRekaman(x, rate) { return keraskan(saringDengung(x, rate), rate, -18, 3); }
+
+/** Buang dengung/getaran di bawah ±30 Hz (dan DC) yang memboroskan ruang volume. High-pass 2 tingkat (12 dB/oktaf). */
+export function saringDengung(x, rate) {
+  const f = 30, w = Math.tan(Math.PI * f / rate), q = Math.SQRT1_2, n = 1 / (1 + w / q + w * w);
+  const b0 = n, b1 = -2 * n, b2 = n, a1 = 2 * (w * w - 1) * n, a2 = (1 - w / q + w * w) * n;
+  const y = new Float32Array(x.length); let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) { const v = x[i], o = b0 * v + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = v; y2 = y1; y1 = o; y[i] = o; }
+  return y;
+}
 
 /** Pastikan tidak ada yang melewati batas (dipakai bila "Keraskan akhir" mati). */
 function amankan(x) {
