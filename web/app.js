@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -482,10 +482,34 @@ function seret(pegangan, ke) {
   });
 }
 seret($("#hL"), "awal"); seret($("#hR"), "akhir");
-wadah.addEventListener("click", (e) => {
-  const x = dataTampil(); if (!x) return;
-  const k = wadah.getBoundingClientRect(); Pm.posisi = ((e.clientX - k.left) / k.width) * x.length / R.rate;
-  if (Pm.main) { hentikanPutar(false); putar(); } else gambarGelombang();
+// Geser posisi putar: klik atau tarik di gelombang. Saat ditarik, pemutaran berhenti sebentar lalu lanjut dari posisi baru.
+const labelPosisi = document.createElement("div"); labelPosisi.className = "label-posisi"; labelPosisi.hidden = true; wadah.appendChild(labelPosisi);
+function aturPosisiDari(e) {
+  const x = dataTampil(), k = wadah.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientX - k.left) / k.width));
+  Pm.posisi = f * x.length / R.rate;
+  labelPosisi.textContent = waktu(Pm.posisi); labelPosisi.style.left = f * 100 + "%"; labelPosisi.hidden = false;
+  gambarGelombang();
+}
+wadah.addEventListener("pointerdown", (e) => {
+  if (!dataTampil() || e.button !== 0) return;
+  const tadiMain = Pm.main; if (tadiMain) hentikanPutar();
+  wadah.setPointerCapture(e.pointerId); wadah.classList.add("menyeret"); aturPosisiDari(e);
+  const gerak = (ev) => aturPosisiDari(ev);
+  const lepas = () => {
+    wadah.removeEventListener("pointermove", gerak); wadah.removeEventListener("pointerup", lepas); wadah.removeEventListener("pointercancel", lepas);
+    wadah.classList.remove("menyeret"); labelPosisi.hidden = true;
+    if (tadiMain) putar();
+  };
+  wadah.addEventListener("pointermove", gerak); wadah.addEventListener("pointerup", lepas); wadah.addEventListener("pointercancel", lepas);
+});
+// Panah kiri/kanan: mundur/maju 5 detik (kecuali sedang mengetik)
+document.addEventListener("keydown", (e) => {
+  if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || !dataTampil() || e.target.closest("input, textarea, select, [contenteditable]")) return;
+  e.preventDefault();
+  const x = dataTampil(), dur = x.length / R.rate, tadiMain = Pm.main, pos = Pm.posisiKini;
+  if (tadiMain) hentikanPutar();
+  Pm.posisi = Math.max(0, Math.min(dur - 0.1, pos + (e.key === "ArrowRight" ? 5 : -5)));
+  if (tadiMain) putar(); else gambarGelombang();
 });
 function setLihat(v) {
   R.lihat = v; $$("#ab button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
@@ -499,7 +523,13 @@ Object.defineProperty(Pm, "posisiKini", { get() { return Pm.main ? Pm.mulaiPos +
 
 /** Siapkan AudioContext pemutar dan arahkan ke speaker mode aktif. */
 async function siapkanPemutar() {
-  if (!Pm.ctx) Pm.ctx = new AudioContext();
+  if (!Pm.ctx) {
+    Pm.ctx = new AudioContext();
+    Pm.vol = Pm.ctx.createGain(); Pm.vol.gain.value = volPutarNilai();
+    // pembatas: volume di atas 100% tidak membuat suara pecah
+    const bt = Pm.ctx.createDynamicsCompressor(); bt.threshold.value = -1; bt.knee.value = 0; bt.ratio.value = 20; bt.attack.value = 0.002; bt.release.value = 0.15;
+    Pm.vol.connect(bt); bt.connect(Pm.ctx.destination);
+  }
   const sink = M.idOutput && M.idOutput !== "default" ? M.idOutput : "";
   if (Pm.ctx.setSinkId && Pm.sink !== sink) { try { await Pm.ctx.setSinkId(sink); Pm.sink = sink; } catch {} }
   await Pm.ctx.resume();
@@ -511,7 +541,7 @@ async function putar() {
   await siapkanPemutar();
   const b = Pm.ctx.createBuffer(1, x.length, R.rate); b.copyToChannel(x, 0);
   if (Pm.posisi >= x.length / R.rate - 0.05) Pm.posisi = 0;
-  Pm.src = Pm.ctx.createBufferSource(); Pm.src.buffer = b; Pm.src.connect(Pm.ctx.destination);
+  Pm.src = Pm.ctx.createBufferSource(); Pm.src.buffer = b; Pm.src.connect(Pm.vol);
   Pm.src.onended = () => { if (Pm.main) { Pm.main = false; Pm.posisi = 0; aturTombol(); gambarGelombang(); } };
   Pm.mulaiCtx = Pm.ctx.currentTime; Pm.mulaiPos = Pm.posisi; Pm.src.start(0, Pm.posisi); Pm.main = true;
   toast(t("memutarKe") + ": " + (M.labelOutput || "Windows"));
@@ -526,6 +556,20 @@ function hentikanPutar(simpanPosisi = true) {
 setInterval(() => { if (Pm.main) gambarGelombang(); }, 80);
 $("#btnPutar").onclick = () => (Pm.main ? hentikanPutar() : putar());
 $("#btnDengar").onclick = () => { if (!R.asli) { toast(t("pilihDulu"), true); return; } setLihat("studio"); putar(); };
+
+// Volume putar rekaman (0-200%), tersimpan di pengaturan; klik ikon = bisu/bunyi lagi
+function volPutarNilai() { return (P.volPutar ?? 100) / 100; }
+function tampilVolPutar() {
+  const v = P.volPutar ?? 100; $("#volPutar").value = v; isiSlider($("#volPutar")); $("#volPutarNilai").textContent = v + "%";
+  $("#ikonVolPutar").className = "bi " + (v === 0 ? "bi-volume-mute" : v < 60 ? "bi-volume-down" : "bi-volume-up");
+  if (Pm.vol) Pm.vol.gain.setTargetAtTime(v / 100, Pm.ctx.currentTime, 0.03);
+}
+$("#volPutar").addEventListener("input", (e) => { P.volPutar = Number(e.target.value); tampilVolPutar(); simpanPengaturan(); });
+$("#ikonVolPutar").onclick = () => {
+  if (P.volPutar > 0) { Pm.volSebelum = P.volPutar; P.volPutar = 0; } else P.volPutar = Pm.volSebelum || 100;
+  tampilVolPutar(); simpanPengaturan();
+};
+tampilVolPutar();
 
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
@@ -960,7 +1004,7 @@ function segarkanTeks() {
   try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } };
     for (const m of ["rumah", "laptop"]) Object.assign(P.profil[m], (s.profil || {})[m] || {}); } catch {}
   if (!["rumah", "laptop"].includes(P.modeAudio)) P.modeAudio = "rumah";
-  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa();
+  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar();
   segarkanTeks();
   await Promise.all([muatDaftar(), muatPustaka(), muatAudio()]);
   tampilkanKolom();
