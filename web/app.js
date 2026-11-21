@@ -778,7 +778,7 @@ $("#btnSimpanAtas").onclick = () => {
 };
 
 // ================= Magic Vocal =================
-const TINGKAT = { natural: { k: 55, cepat: 0.10, gema: 10 }, pop: { k: 85, cepat: 0.035, gema: 16 }, autotune: { k: 100, cepat: 0, gema: 12 } };
+const TINGKAT = { natural: { k: 60, cepat: 0.12, gema: 8 }, pop: { k: 85, cepat: 0.06, gema: 12 }, autotune: { k: 100, cepat: 0, gema: 10 } };
 const MV = { tingkat: "pop", kekuatan: 85, langkah: { nada: true, dinamika: true, rantai: true, master: true }, untuk: null, kunci: null, lacak: null, sibuk: false, ren: null, awalGrafik: 0 };
 function tutupMagic() { $("#mvPop").hidden = true; }
 function tampilMV() {

@@ -83,7 +83,15 @@ export async function lacakNada(x, rate, tiapPotong) {
   // buang loncatan satu-dua bingkai (oktaf salah) dengan median 5
   const hasil = f0.slice();
   for (let i = 2; i < f0.length - 2; i++) { if (!f0[i]) continue; const w = [f0[i - 2], f0[i - 1], f0[i], f0[i + 1], f0[i + 2]].filter((v) => v > 0).sort((p, q) => p - q); if (w.length >= 3) hasil[i] = w[Math.floor(w.length / 2)]; }
-  return { hop: hop / r, f0: hasil };
+  // salah baca oktaf: nada yang berbeda lebih dari 7 semitone dari median sekitarnya dianggap tidak bernada
+  const bersih = hasil.slice();
+  for (let i = 0; i < hasil.length; i++) {
+    if (!hasil[i]) continue;
+    const w = []; for (let k = i - 15; k <= i + 15; k++) if (k >= 0 && k < hasil.length && hasil[k]) w.push(hasil[k]);
+    w.sort((p, q) => p - q); const med = w[Math.floor(w.length / 2)];
+    if (Math.abs(12 * Math.log2(hasil[i] / med)) > 7) bersih[i] = 0;
+  }
+  return { hop: hop / r, f0: bersih };
 }
 
 const keMidi = (f) => 69 + 12 * Math.log2(f / 440);
@@ -98,67 +106,103 @@ function nadaSkala(m, kunci) {
 
 /**
  * Hitung koreksi nada per bingkai (semitone, + = naikkan).
- * kekuatan 0..1, cepat (detik): waktu menuju nada benar (0 = langsung, efek autotune).
+ * kekuatan 0..1. cepat (detik) = waktu perpindahan koreksi; 0 = efek autotune (tiap bingkai langsung ke nada benar).
+ * Selain efek autotune, koreksi dihitung dari NADA TENGAH tiap not (rata-rata ±75 ms), sehingga vibrato,
+ * liukan, dan ekspresi penyanyi tetap utuh; yang digeser hanya posisi not yang meleset.
  */
 export function rencanaKoreksi(lacak, kunci, kekuatan, cepat) {
-  const { f0, hop } = lacak, n = f0.length, koreksi = new Float32Array(n), target = new Float32Array(n), asli = new Float32Array(n);
-  for (let i = 0; i < n; i++) { if (!f0[i]) continue; asli[i] = keMidi(f0[i]); target[i] = nadaSkala(asli[i], kunci); }
-  // tahan nada target supaya tidak berkedip saat suara berada tepat di tengah dua nada
-  for (let i = 1; i < n; i++) if (f0[i] && f0[i - 1] && target[i] !== target[i - 1] && Math.abs(asli[i] - target[i - 1]) < 0.65) target[i] = target[i - 1];
-  const a = cepat <= 0 ? 1 : 1 - Math.exp(-hop / cepat);
-  let k = 0, sebelumBernada = false;
+  const { f0, hop } = lacak, n = f0.length, koreksi = new Float32Array(n), target = new Float32Array(n), asli = new Float32Array(n), tengah = new Float32Array(n);
+  for (let i = 0; i < n; i++) if (f0[i]) asli[i] = keMidi(f0[i]);
+  // nada tengah: median nada bernada dalam ±75 ms
+  const R = Math.max(2, Math.round(0.075 / hop));
   for (let i = 0; i < n; i++) {
-    if (!f0[i]) { k *= 0.9; koreksi[i] = 0; sebelumBernada = false; continue; }
-    const ingin = (target[i] - asli[i]) * kekuatan;
-    k = sebelumBernada ? k + (ingin - k) * a : ingin * (cepat <= 0 ? 1 : 0.5);
-    koreksi[i] = Math.max(-2, Math.min(2, k)); sebelumBernada = true;
+    if (!asli[i]) continue;
+    const w = []; for (let k = i - R; k <= i + R; k++) if (k >= 0 && k < n && asli[k]) w.push(asli[k]);
+    w.sort((p, q) => p - q); tengah[i] = w[Math.floor(w.length / 2)];
   }
-  // statistik: sen = 1/100 semitone
+  const efekAutotune = cepat <= 0;
+  const dasar = efekAutotune ? asli : tengah;
+  // nada target dengan histeresis: pindah not hanya bila nada tengah jelas menjauh (> 0,6 semitone) dari not sebelumnya
+  for (let i = 0; i < n; i++) {
+    if (!asli[i]) continue;
+    const calon = nadaSkala(dasar[i], kunci);
+    target[i] = i && target[i - 1] && Math.abs(dasar[i] - target[i - 1]) < 0.6 ? target[i - 1] : calon;
+  }
+  const a = efekAutotune ? 1 : 1 - Math.exp(-hop / cepat), aMasuk = 1 - Math.exp(-hop / 0.06);
+  let k = 0, lamaBernada = 0;
+  for (let i = 0; i < n; i++) {
+    if (!asli[i]) { k += (0 - k) * aMasuk; koreksi[i] = Math.abs(k) < 0.005 ? 0 : k; lamaBernada = 0; continue; }
+    let ingin = (target[i] - dasar[i]) * kekuatan;
+    if (!efekAutotune) {
+      // selisih besar biasanya disengaja (liukan, nada blues): kurangi koreksinya, maks ±0,8 semitone
+      const d = Math.abs(target[i] - dasar[i]); if (d > 0.5) ingin *= Math.max(0.3, 1 - (d - 0.5) / 0.6);
+      ingin = Math.max(-0.8, Math.min(0.8, ingin));
+    }
+    // awal frasa: koreksi masuk perlahan (±60 ms) supaya tidak ada "klik" nada
+    const laju = efekAutotune ? 1 : lamaBernada < Math.round(0.06 / hop) ? Math.min(a, aMasuk) : a;
+    k += (ingin - k) * laju; koreksi[i] = k; lamaBernada++;
+  }
+  // statistik: sen = 1/100 semitone (dinilai dari nada tengah supaya vibrato tidak dihitung sebagai fals)
   let n1 = 0, tepat = 0, sebelum = 0, sesudah = 0, nadaDikoreksi = 0, diNada = false;
   for (let i = 0; i < n; i++) {
-    if (!f0[i]) { diNada = false; continue; }
-    const dev = Math.abs(asli[i] - target[i]) * 100, dev2 = Math.abs(asli[i] + koreksi[i] - target[i]) * 100;
+    if (!asli[i]) { diNada = false; continue; }
+    const dev = Math.abs(tengah[i] - target[i]) * 100, dev2 = Math.abs(tengah[i] + koreksi[i] - target[i]) * 100;
     n1++; sebelum += dev; sesudah += dev2; if (dev <= 20) tepat++;
-    if (!diNada || (i && target[i] !== target[i - 1])) { if (dev > 20) nadaDikoreksi++; diNada = true; }
+    if (!diNada || target[i] !== target[i - 1]) { if (dev > 20) nadaDikoreksi++; diNada = true; }
   }
   return { koreksi, target, asli, hop, stat: { tepat: n1 ? Math.round(tepat / n1 * 100) : 0, falsSebelum: n1 ? Math.round(sebelum / n1) : 0, falsSesudah: n1 ? Math.round(sesudah / n1) : 0, nadaDikoreksi } };
 }
 
 /**
  * Geser nada mengikuti rencana koreksi dengan TD-PSOLA (durasi tetap sama).
- * Bagian tidak bernada disalin apa adanya (periode semu 8 ms, rasio 1).
+ * - Tanda analisa dicari berkesinambungan pada sinyal yang dihaluskan (sejajar getaran pita suara).
+ * - Tanda sintesis maju sebesar jarak tanda analisa / rasio: tanpa koreksi, butir kembali ke tempat asalnya (identik).
+ * - Bagian yang tidak dikoreksi memakai suara asli; perpindahan asli <-> hasil koreksi memakai crossfade 20 ms.
  */
 export async function terapkanKoreksi(x, rate, lacak, rencana, tiapPotong) {
   const { f0, hop } = lacak, { koreksi } = rencana, n = x.length;
-  const y = new Float32Array(n), bobot = new Float32Array(n);
-  const periodeDi = (t) => { const i = Math.min(f0.length - 1, Math.max(0, Math.floor(t / rate / hop))); return f0[i] ? rate / f0[i] : rate * 0.008; };
-  const rasioDi = (t) => { const i = Math.min(koreksi.length - 1, Math.max(0, Math.floor(t / rate / hop))); return Math.pow(2, koreksi[i] / 12); };
-  // tanda analisa: maju satu periode, disesuaikan ke puncak terdekat supaya sejajar getaran pita suara
+  const bingkai = (t) => Math.min(f0.length - 1, Math.max(0, Math.floor(t / rate / hop)));
+  const rasioDi = (t) => Math.pow(2, koreksi[bingkai(t)] / 12);
+  // sinyal dihaluskan (low-pass ±1 kHz) untuk mencari puncak getaran yang konsisten
+  const halus = new Float32Array(n), al = 1 - Math.exp(-2 * Math.PI * 1000 / rate);
+  let lp = 0; for (let i = 0; i < n; i++) { lp += (x[i] - lp) * al; halus[i] = lp; }
+  // tanda analisa
   const tanda = []; let t = 0;
   while (t < n) {
-    const P = periodeDi(t);
-    if (f0[Math.min(f0.length - 1, Math.floor(t / rate / hop))]) {
-      let terbaik = Math.round(t), nilai = -1;
-      for (let k = Math.round(t - P * 0.25); k <= Math.round(t + P * 0.25); k++) if (k >= 0 && k < n && Math.abs(x[k]) > nilai) { nilai = Math.abs(x[k]); terbaik = k; }
-      t = tanda.length && terbaik <= tanda[tanda.length - 1] ? t : terbaik;
-    }
-    tanda.push(Math.round(t)); t += P;
+    const f = f0[bingkai(t)];
+    if (f) {
+      const P = rate / f, dari = Math.round(t + (tanda.length ? 0.8 * P : 0) - (tanda.length ? P : 0)), sampai = Math.round(t + (tanda.length ? 1.2 * P : P) - (tanda.length ? P : 0));
+      let terbaik = Math.round(t), nilai = -Infinity;
+      for (let k = Math.max(dari, tanda.length ? tanda[tanda.length - 1] + 1 : 0); k <= Math.min(n - 1, sampai); k++) if (halus[k] > nilai) { nilai = halus[k]; terbaik = k; }
+      tanda.push(terbaik); t = terbaik + P;
+    } else { tanda.push(Math.round(t)); t += rate * 0.005; }
   }
-  // sintesis: tanda keluaran maju periode/rasio, ambil butir dari tanda analisa terdekat
-  let ts = 0, j = 0, langkah = 0;
+  if (tanda.length < 3) return x.slice();
+  const periode = (j) => Math.max(16, Math.round(((tanda[Math.min(tanda.length - 1, j + 1)] - tanda[Math.max(0, j - 1)]) / 2) || rate * 0.005));
+  // sintesis
+  const y = new Float32Array(n), bobot = new Float32Array(n);
+  let ts = tanda[0], j = 0, langkah = 0;
   while (ts < n) {
-    while (j + 1 < tanda.length && Math.abs(tanda[j + 1] - ts) < Math.abs(tanda[j] - ts)) j++;
-    const pusat = tanda[j], P = Math.max(16, Math.round(periodeDi(pusat))), L = 2 * P;
+    while (j + 1 < tanda.length && Math.abs(tanda[j + 1] - ts) <= Math.abs(tanda[j] - ts)) j++;
+    const pusat = tanda[j], P = periode(j), L = 2 * P, d0 = Math.round(ts);
     for (let k = -P; k < P; k++) {
-      const s = pusat + k, d = Math.round(ts) + k; if (s < 0 || s >= n || d < 0 || d >= n) continue;
+      const s = pusat + k, d = d0 + k; if (s < 0 || s >= n || d < 0 || d >= n) continue;
       const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * (k + P) / L);
       y[d] += x[s] * w; bobot[d] += w;
     }
-    ts += P / rasioDi(pusat);
+    ts += (tanda[Math.min(tanda.length - 1, j + 1)] - pusat || P) / rasioDi(pusat);
     if (++langkah % 4000 === 0) { tiapPotong && tiapPotong(ts / n); await jeda(); }
   }
   for (let i = 0; i < n; i++) y[i] = bobot[i] > 0.05 ? y[i] / Math.max(bobot[i], 0.5) : x[i];
-  return y;
+  // pakai suara asli di bagian yang tidak dikoreksi (crossfade 20 ms)
+  const out = new Float32Array(n), cf = Math.round(rate * 0.02);
+  let campur = 0;
+  for (let i = 0; i < n; i++) {
+    const perlu = Math.abs(koreksi[bingkai(i)]) > 0.01 ? 1 : 0;
+    campur += perlu > campur ? 1 / cf : perlu < campur ? -1 / cf : 0; campur = Math.max(0, Math.min(1, campur));
+    out[i] = x[i] * (1 - campur) + y[i] * campur;
+  }
+  return out;
 }
 
 /** Penyetara dinamika: bagian bernyanyi yang pelan dinaikkan, yang keras diturunkan (maks ±6 dB), sela sunyi dibiarkan. */
