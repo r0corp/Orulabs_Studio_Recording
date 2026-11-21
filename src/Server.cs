@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.3.6";
+        public const string Versi = "1.3.7";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -186,6 +186,18 @@ namespace OrulabStudio
                     string f = PathMusik(q["nama"]);
                     if (!File.Exists(f)) { Kirim(res, 404, "text/plain", "Tidak ada"); return; }
                     KirimFile(res, f, "audio/wav"); return;
+                }
+
+                case "rekaman/ekspor":
+                {
+                    // simpan salinan M4A (untuk WhatsApp/ponsel) di folder "Untuk WhatsApp", lalu tampilkan di Explorer
+                    if (req.HttpMethod != "POST") { Kirim(res, 405, "text/plain", "POST"); return; }
+                    string nama = Bersihkan(q["nama"] ?? ""); if (nama.Length == 0) nama = "Rekaman";
+                    string folder = Path.Combine(FolderRekaman, "Untuk WhatsApp"); Directory.CreateDirectory(folder);
+                    string f = Path.Combine(folder, nama + ".m4a");
+                    using (var fs = File.Create(f)) req.InputStream.CopyTo(fs);
+                    try { Process.Start("explorer.exe", "/select,\"" + f + "\""); } catch { }
+                    KirimJson(res, 200, "{\"ok\":true,\"nama\":" + J(nama + ".m4a") + "}"); return;
                 }
 
                 case "rekaman/ganti-nama":

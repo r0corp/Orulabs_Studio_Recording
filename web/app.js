@@ -2,6 +2,7 @@
 // YouTube (pemutar resmi, kolom seperti YouTube asli) + perekam + rekaman + studio + analisa + pengaturan.
 import * as dsp from "./dsp.js";
 import * as magic from "./magic.js";
+import * as ekspor from "./ekspor.js";
 import { t, aturBahasa, terapkan } from "./i18n.js";
 
 const $ = (s) => document.querySelector(s);
@@ -914,6 +915,22 @@ $("#nadaKiri").onclick = () => { if (!MV.ren) return; MV.awalGrafik = Math.max(0
 $("#nadaKanan").onclick = () => { if (!MV.ren) return; MV.awalGrafik = Math.min(Math.max(0, MV.ren.asli.length - Math.round(15 / MV.ren.hop)), MV.awalGrafik + Math.round(15 / MV.ren.hop)); tampilGrafikNada(); };
 $$('.tabs [data-tab="analisa"]').forEach((b) => b.addEventListener("click", () => setTimeout(() => tampilGrafikNada(), 30)));
 
+// Kirim ke WhatsApp: WhatsApp tidak menerima WAV, jadi yang sedang didengar (Asli/Studio) disimpan sebagai M4A (AAC 192 kbps)
+$("#btnWa").onclick = async () => {
+  if (!R.asli) { toast(t("pilihDulu"), true); return; }
+  const studio = R.lihat === "studio";
+  if (studio && !R.studio) { toast(t("studioBelum")); return; }
+  const data = studio ? R.studio : dataPutar(), b = $("#btnWa");
+  const dasar = R.nama.replace(/s*(Studio)(s*(d+))?$/i, "") + (studio ? (R.magicAktif ? " (Magic Vocal)" : " (Studio)") : "");
+  b.disabled = true; b.classList.add("sibuk"); toast(t("waMembuat"));
+  try {
+    const m4a = await ekspor.keM4a(data, R.rate);
+    const j = await apiJson("rekaman/ekspor?" + q({ nama: dasar }), { method: "POST", body: m4a });
+    toast(t("waSiap") + " (" + j.nama + ")");
+  } catch (e) { toast(e.message, true); }
+  finally { b.disabled = false; b.classList.remove("sibuk"); }
+};
+
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
@@ -941,7 +958,7 @@ function aturTombol() {
     const b = el.querySelector(".ic"); if (b) { b.disabled = M.rek; b.title = t(main ? "jeda" : "putar"); }
   });
   $("#btnStop").disabled = !M.rek && !Pm.main;
-  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan", "#btnMagic"].forEach((s) => ($(s).disabled = !ada || M.rek));
+  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan", "#btnMagic", "#btnWa"].forEach((s) => ($(s).disabled = !ada || M.rek));
   $$("#modeAudio button, #pilihModeAudio button").forEach((b) => (b.disabled = M.rek));
 }
 

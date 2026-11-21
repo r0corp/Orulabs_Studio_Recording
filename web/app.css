@@ -792,3 +792,8 @@ canvas { display: block; width: 100%; height: 100%; }
 .mv-kunci .mv-kunci-teks { flex: 1; min-width: 0; }
 .mv-kunci .dd { width: 150px; }
 .mv-kunci .dd-menu { width: 230px; max-height: 300px; }
+
+/* tombol kirim ke WhatsApp */
+.btn.wa { background: #25d366; border-color: #25d366; color: #fff; }
+.btn.wa:disabled { opacity: .5; }
+.btn.wa.sibuk i { animation: kedip 1s infinite; }
