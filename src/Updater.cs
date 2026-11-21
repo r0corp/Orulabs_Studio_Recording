@@ -97,7 +97,9 @@ namespace OrulabStudio
         {
             try
             {
-                if (urlAset == null) { Cek(); if (urlAset == null) return "{\"ok\":false,\"galat\":\"Tidak ada update.\"}"; }
+                // Selalu cek ulang: aplikasi bisa terbuka lama dan rilis baru bisa terbit setelah cek terakhir.
+                urlAset = null; Cek();
+                if (urlAset == null || Banding(versiBaru ?? "", Program.Versi) <= 0) return "{\"ok\":false,\"galat\":\"Tidak ada update.\"}";
                 string sementara = FolderSementara;
                 if (Directory.Exists(sementara)) Directory.Delete(sementara, true);
                 Directory.CreateDirectory(sementara);
