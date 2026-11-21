@@ -539,3 +539,12 @@ export function ringkasLevel(x, rate) {
   if (!n) return null;
   return { ideal: Math.round(ideal / n * 100), pelan: Math.round(pelan / n * 100), bahaya: detikBahaya.size };
 }
+
+/** Campuran mentah untuk tampilan Asli: vokal apa adanya + musik (tanpa efek), panjang sama dengan vokal, dijaga tidak pecah. */
+export function campurMentah(vokal, musik, rate, o) {
+  const y = new Float32Array(vokal.length), geser = Math.round(o.geserMs / 1000 * rate);
+  let p = 0;
+  for (let i = 0; i < y.length; i++) { const j = i - geser; const v = vokal[i] * o.volV + (j >= 0 && j < musik.length ? musik[j] : 0) * o.volM; y[i] = v; const a = v < 0 ? -v : v; if (a > p) p = a; }
+  if (p > 0.98) { const g = 0.98 / p; for (let i = 0; i < y.length; i++) y[i] *= g; }
+  return y;
+}

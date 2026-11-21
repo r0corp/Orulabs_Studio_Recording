@@ -481,7 +481,7 @@ async function bukaRekaman(nama) {
 }
 
 function tampilkanRekaman(nama, data, rate) {
-  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0 });
+  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0, asliMix: null });
   tampilMix();
   $("#gayaRapikan").hidden = true;
   $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
@@ -507,7 +507,7 @@ async function muatJalurMusik(nama) {
     const simpan = (P.mixRekaman || {})[nama];
     if (simpan) { P.mixVokal = simpan.v; P.mixMusik = simpan.m; if (simpan.g != null) R.geser = simpan.g; R.mixAuto = false; }
     else { P.mixVokal = 100; R.mixAuto = true; }
-    tampilMix(); prosesUlang();
+    R.asliMix = null; tampilMix(); prosesUlang();
   } catch {}
 }
 
@@ -541,7 +541,7 @@ function simpanMix() {
   P.mixRekaman[R.nama] = { v: P.mixVokal, m: P.mixMusik, g: R.geser };
   const kunci = Object.keys(P.mixRekaman); if (kunci.length > 200) delete P.mixRekaman[kunci[0]];
 }
-const mixBerubah = tundaan(() => { simpanMix(); simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
+const mixBerubah = tundaan(() => { R.asliMix = null; simpanMix(); simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
 $("#mixVokal").addEventListener("input", (e) => { P.mixVokal = +e.target.value; tampilMix(); mixBerubah(); });
 $("#mixMusik").addEventListener("input", (e) => { P.mixMusik = +e.target.value; tampilMix(); mixBerubah(); });
 $("#fokusVokal").addEventListener("input", (e) => { P.fokusVokal = +e.target.value; tampilMix(); mixBerubah(); });
@@ -685,8 +685,16 @@ async function siapkanPemutar() {
   if (Pm.ctx.setSinkId && Pm.sink !== sink) { try { await Pm.ctx.setSinkId(sink); Pm.sink = sink; } catch {} }
   await Pm.ctx.resume();
 }
+/** Data yang diputar: tampilan Asli pada rekaman 2 jalur = vokal mentah + musik. */
+function dataPutar() {
+  if (R.lihat !== "studio" && R.musik && R.asli) {
+    if (!R.asliMix) R.asliMix = dsp.campurMentah(R.asli, R.musik, R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0 });
+    return R.asliMix;
+  }
+  return dataTampil();
+}
 async function putar() {
-  const x = dataTampil();
+  const x = dataPutar();
   if (!x) { if (R.asli && R.lihat === "studio") toast(t("studioBelum")); return; }
   if (M.rek) return;
   await siapkanPemutar();
@@ -826,7 +834,7 @@ const prosesUlang = tundaan(async () => {
       const mulai = Math.floor(R.awal * R.asli.length), akhir = Math.ceil(R.akhir * R.asli.length);
       const lv = dsp.levelAktif(hasil, R.rate), lm = dsp.levelAktif(R.musik, R.rate, mulai, akhir);
       P.mixMusik = Math.max(0, Math.min(150, Math.round(100 * Math.pow(10, (lv - 5 - lm) / 20) / 5) * 5));
-      R.mixAuto = false; simpanMix(); tampilMix();
+      R.mixAuto = false; R.asliMix = null; simpanMix(); tampilMix();
     }
     if (R.musik) hasil = dsp.campurJalur(hasil, R.musik, R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0, awal: R.awal, akhir: R.akhir, panjangAsli: R.asli.length });
     if (versi !== R.versi) return;
