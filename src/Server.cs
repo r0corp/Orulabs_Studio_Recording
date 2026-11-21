@@ -1,4 +1,4 @@
-﻿// Orulabs Studio Recording: server lokal kecil yang melayani tampilan (folder "web") di
+// Orulabs Studio Recording: server lokal kecil yang melayani tampilan (folder "web") di
 // http://localhost:47821 lalu membukanya sebagai jendela aplikasi Chrome.
 // Merekam, efek studio, dan analisa dikerjakan di tampilan (browser);
 // server menangani file rekaman, pencarian YouTube, volume input, dan pengaturan.
@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.1.18";
+        public const string Versi = "1.2.0";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -133,7 +133,8 @@ namespace OrulabStudio
 
         static void Api(string rute, HttpListenerRequest req, HttpListenerResponse res)
         {
-            var q = req.QueryString;
+            // Baca parameter sebagai UTF-8 (QueryString bawaan memakai kode halaman sistem: tanda seperti "–" jadi rusak)
+            var q = System.Web.HttpUtility.ParseQueryString(req.Url.Query, Encoding.UTF8);
             switch (rute)
             {
                 case "ping":
@@ -160,6 +161,31 @@ namespace OrulabStudio
                     KirimJson(res, 200, "{\"nama\":" + J(nama) + "}"); return;
                 }
 
+                // ===== Jalur musik: suara YouTube direkam langsung dari laptop, terpisah dari vokal =====
+                case "musik/mulai":
+                {
+                    string g = RekamSuaraLaptop.Mulai();
+                    KirimJson(res, 200, g == null ? "{\"ok\":true}" : "{\"ok\":false,\"galat\":" + J(g) + "}"); return;
+                }
+                case "musik/selesai":
+                {
+                    // simpan jalur musik untuk rekaman bernama q["nama"] (nama sama dengan file vokal)
+                    byte[] wav = RekamSuaraLaptop.Selesai();
+                    string nama = Bersihkan(q["nama"] ?? "");
+                    if (wav == null || nama.Length == 0) { KirimJson(res, 200, "{\"ok\":false}"); return; }
+                    Directory.CreateDirectory(FolderMusik);
+                    File.WriteAllBytes(Path.Combine(FolderMusik, nama + ".wav"), wav);
+                    KirimJson(res, 200, "{\"ok\":true}"); return;
+                }
+                case "musik/batal":
+                    RekamSuaraLaptop.Batal(); KirimJson(res, 200, "{\"ok\":true}"); return;
+                case "rekaman/musik":
+                {
+                    string f = PathMusik(q["nama"]);
+                    if (!File.Exists(f)) { Kirim(res, 404, "text/plain", "Tidak ada"); return; }
+                    KirimFile(res, f, "audio/wav"); return;
+                }
+
                 case "rekaman/ganti-nama":
                 {
                     string lama = PathRekaman(q["lama"]);
@@ -168,16 +194,18 @@ namespace OrulabStudio
                     string tujuan = Path.Combine(FolderRekaman, baru + ".wav");
                     if (File.Exists(tujuan)) { KirimJson(res, 409, "{\"galat\":\"Nama itu sudah dipakai\"}"); return; }
                     File.Move(lama, tujuan);
+                    string mLama = PathMusik(q["lama"]);
+                    if (File.Exists(mLama)) { string mBaru = Path.Combine(FolderMusik, baru + ".wav"); if (!File.Exists(mBaru)) File.Move(mLama, mBaru); }
                     KirimJson(res, 200, "{\"nama\":" + J(baru) + "}"); return;
                 }
 
                 case "rekaman/hapus":
                 {
-                    string f = PathRekaman(q["nama"]);
-                    if (File.Exists(f))
-                        // Dipindah ke Recycle Bin, bukan dihapus permanen.
-                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(f, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    // Dipindah ke Recycle Bin, bukan dihapus permanen (vokal dan jalur musiknya).
+                    foreach (string f in new[] { PathRekaman(q["nama"]), PathMusik(q["nama"]) })
+                        if (File.Exists(f))
+                            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(f, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
                     KirimJson(res, 200, "{\"ok\":true}"); return;
                 }
 
@@ -356,6 +384,15 @@ namespace OrulabStudio
             return nama.Length > 120 ? nama.Substring(0, 120) : nama;
         }
 
+        /// <summary>Folder jalur musik (di dalam folder rekaman, tersembunyi dari daftar karena bukan file *.wav di akar).</summary>
+        static string FolderMusik { get { return Path.Combine(FolderRekaman, "Jalur musik"); } }
+
+        static string PathMusik(string nama)
+        {
+            string b = Bersihkan(nama ?? "");
+            return b.Length == 0 ? "" : Path.Combine(FolderMusik, b + ".wav");
+        }
+
         static string PathRekaman(string nama)
         {
             string b = Bersihkan(nama ?? "");
@@ -385,6 +422,7 @@ namespace OrulabStudio
                       .Append(",\"ukuran\":").Append(f.Length)
                       .Append(",\"waktu\":").Append(J(f.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)))
                       .Append(",\"durasi\":").Append(DurasiWav(f.FullName).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
+                      .Append(",\"musik\":").Append(File.Exists(Path.Combine(FolderMusik, f.Name)) ? "true" : "false")
                       .Append('}');
                 }
             }

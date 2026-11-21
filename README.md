@@ -20,6 +20,10 @@ dan English.
   supaya tidak pecah, tanpa membuat volume naik-turun mengikuti ketukan drum.
 - **Rekam bersama YouTube**: tekan Rekam dan lagu ikut jalan, tekan Stop dan lagu ikut berhenti,
   lagu selesai maka rekaman ikut selesai. Rekaman otomatis dinamai sesuai judul lagu.
+- **Rekam 2 jalur**: vokal direkam dari mic, musik YouTube direkam langsung dari laptop (digital,
+  jernih). Sesudah merekam, atur volume **Vokal** dan **Musik** sendiri-sendiri, geser **Sinkron**
+  bila speaker Bluetooth terlambat, lalu simpan sebagai satu lagu. Rekaman 1 jalur lama tetap bisa
+  diatur lewat slider **Keseimbangan** (Musik ↔ Vokal).
 - **Mode audio, sekali klik**:
   - **Studio Rumah**: mixer + converter, suara keluar lewat Bluetooth mixer.
   - **Laptop**: mic dan speaker laptop saja.

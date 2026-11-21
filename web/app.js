@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 70, fokusVokal: 0, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -78,6 +78,7 @@ function terapkanTema() {
   $("#swKeraskan").classList.toggle("off", !P.keraskanOto);
   $("#swAutoplay").classList.toggle("off", !P.autoplay);
   $("#swSinkron").classList.toggle("off", !P.sinkronYt);
+  $("#swDuaJalur").classList.toggle("off", !P.duaJalur);
   gambarGelombang();
 }
 mqGelap.addEventListener("change", () => { if (P.mode === "auto") terapkanTema(); });
@@ -85,6 +86,7 @@ $$("#warna button").forEach((b) => (b.onclick = () => { P.warna = b.dataset.w; t
 $$("#tema button").forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; terapkanTema(); simpanPengaturan(); }));
 $$("#bahasa button").forEach((b) => (b.onclick = () => { P.bahasa = b.dataset.l; aturBahasa(P.bahasa); terapkanTema(); segarkanTeks(); simpanPengaturan(); }));
 $("#swKeraskan").onclick = () => { P.keraskanOto = !P.keraskanOto; terapkanTema(); simpanPengaturan(); };
+$("#swDuaJalur").onclick = () => { P.duaJalur = !P.duaJalur; terapkanTema(); simpanPengaturan(); };
 $("#swSinkron").onclick = () => { P.sinkronYt = !P.sinkronYt; terapkanTema(); simpanPengaturan(); };
 $("#swAutoplay").onclick = () => { P.autoplay = !P.autoplay; terapkanTema(); tampilkanKolom(); simpanPengaturan(); };
 
@@ -365,6 +367,11 @@ async function mulaiRekam() {
   if (!M.node || !M.stream || !M.stream.active) { toast(t("belumSiap"), true); return; }
   if (Pm.main) hentikanPutar();
   await M.ctx.resume();
+  // Rekam 2 jalur: musik direkam langsung dari laptop (speaker bawaan Windows) selama merekam bersama lagu
+  M.jalurMusik = false;
+  if (P.duaJalur && P.sinkronYt && YT.pemutar && YT.kini) {
+    try { const j = await apiJson("musik/mulai", { method: "POST" }); M.jalurMusik = !!j.ok; if (!j.ok) toast(t("jalurGagal"), true); } catch { toast(t("jalurGagal"), true); }
+  }
   M.potongan = []; M.rek = true; M.mulai = performance.now();
   // Rekam langsung dari mic dengan jam mic sendiri. Lewat AudioContext, jamnya ikut speaker (Bluetooth) dan
   // Chrome membuang potongan suara saat Bluetooth tersendat, sehingga rekaman terdengar makin cepat.
@@ -420,14 +427,15 @@ async function selesaiRekam() {
   const lama = (performance.now() - M.mulai) / 1000 - 0.12, selisih = total / rate - lama;
   console.info("rekam:", L && L.rate ? "langsung" : "worklet", rate, "Hz,", (total / rate).toFixed(2), "dtk dari", lama.toFixed(2), "dtk");
   if (total >= rate * 0.5 && Math.abs(selisih) > Math.max(0.5, lama * 0.01)) toast(t("rekamTerputus"), true);
-  if (total < rate * 0.5) { toast(t("terlaluPendek"), true); return; }
+  if (total < rate * 0.5) { if (M.jalurMusik) api("musik/batal", { method: "POST" }).catch(() => {}); toast(t("terlaluPendek"), true); return; }
   if (P.keraskanOto) data = dsp.keraskanRekaman(data, rate);
   try {
     const j = await apiJson("rekaman/simpan?" + q({ nama: namaRekamanBaru() }), { method: "POST", body: dsp.keWav(data, rate) });
+    if (M.jalurMusik) { await api("musik/selesai?" + q({ nama: j.nama }), { method: "POST" }).catch(() => {}); M.jalurMusik = false; toast(t("jalurSiap")); }
     toast(t("tersimpan") + ": " + j.nama + (P.keraskanOto ? " (" + t("dikeraskan") + ")" : ""));
     await muatDaftar(); tampilkanRekaman(j.nama, data, rate);
     $("#btnRapikan").classList.add("baru"); toast(t("rapikanSiap"));
-  } catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
+  } catch (e) { if (M.jalurMusik) api("musik/batal", { method: "POST" }).catch(() => {}); toast(t("gagalSimpan") + ": " + e.message, true); }
 }
 $("#btnRekam").onclick = () => (M.rek ? selesaiRekam() : mulaiRekam());
 $("#btnStop").onclick = () => { if (M.rek) selesaiRekam(); else if (Pm.main) hentikanPutar(); };
@@ -469,14 +477,47 @@ async function bukaRekaman(nama) {
 }
 
 function tampilkanRekaman(nama, data, rate) {
-  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2 });
+  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0 });
+  tampilMix();
   $("#gayaRapikan").hidden = true;
   $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
   $$("#daftar .item").forEach((el) => el.classList.toggle("on", el.dataset.n === nama));
   Pm.posisi = 0; setLihat("asli");
   R.analisa = dsp.analisa(data, rate); tampilkanAnalisa();
   prosesUlang(); aturTombol();
+  muatJalurMusik(nama);
 }
+
+/** Muat jalur musik rekaman 2 jalur, samakan sample rate, lalu cari keterlambatan vokal (sinkron). */
+async function muatJalurMusik(nama) {
+  const info = R.daftar.find((r) => r.nama === nama);
+  if (!info || !info.musik) return;
+  try {
+    const buf = await (await api("rekaman/musik?" + q({ nama }))).arrayBuffer();
+    const w = dsp.bacaWav(buf); if (!w || R.nama !== nama) return;
+    R.musik = dsp.ubahRate(w.data, w.rate, R.rate);
+    const auto = dsp.cariGeser(R.asli, R.musik, R.rate);
+    // tanpa petunjuk dari rekaman: speaker kabel ±30 ms, Bluetooth ±200 ms
+    R.geser = auto != null ? auto : (/C-Media|Realtek|USB/i.test(P.profil[P.modeAudio].output || "") ? 30 : 200);
+    tampilMix(); prosesUlang();
+  } catch {}
+}
+
+// ================= Baris Mix =================
+function tampilMix() {
+  const ada = !!R.asli; $("#barisMix").hidden = !ada; if (!ada) return;
+  const dua = !!R.musik; $("#mixDua").hidden = !dua; $("#mixSatu").hidden = dua;
+  const set = (id, v, teks) => { const el = $(id); el.value = v; isiSlider(el); $(id + "Nilai").textContent = teks; };
+  set("#mixVokal", P.mixVokal, P.mixVokal + "%"); set("#mixMusik", P.mixMusik, P.mixMusik + "%");
+  $("#sinkronNilai").textContent = Math.round(R.geser || 0) + " ms";
+  const f = $("#fokusVokal"); f.value = P.fokusVokal; isiSlider(f); $("#fokusNilai").textContent = (P.fokusVokal > 0 ? "+" : "") + P.fokusVokal;
+}
+const mixBerubah = tundaan(() => { simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
+$("#mixVokal").addEventListener("input", (e) => { P.mixVokal = +e.target.value; tampilMix(); mixBerubah(); });
+$("#mixMusik").addEventListener("input", (e) => { P.mixMusik = +e.target.value; tampilMix(); mixBerubah(); });
+$("#fokusVokal").addEventListener("input", (e) => { P.fokusVokal = +e.target.value; tampilMix(); mixBerubah(); });
+$("#sinkronKurang").onclick = () => { R.geser = Math.max(-300, (R.geser || 0) - 10); tampilMix(); mixBerubah(); };
+$("#sinkronTambah").onclick = () => { R.geser = Math.min(800, (R.geser || 0) + 10); tampilMix(); mixBerubah(); };
 
 $("#btnGanti").onclick = async () => {
   if (!R.nama) return;
@@ -491,7 +532,7 @@ $("#btnHapus").onclick = async () => {
   try {
     if (Pm.main) hentikanPutar();
     await api("rekaman/hapus?" + q({ nama: R.nama }), { method: "POST" });
-    Object.assign(R, { nama: null, asli: null, studio: null, analisa: null });
+    Object.assign(R, { nama: null, asli: null, studio: null, analisa: null, musik: null }); tampilMix(); $("#gayaRapikan").hidden = true;
     $("#namaRekaman").setAttribute("data-t", "belumDipilih"); $("#namaRekaman").textContent = t("belumDipilih");
     gambarGelombang(); tampilkanAnalisa(); aturTombol(); await muatDaftar(); toast(t("keRecycle"));
   } catch (e) { toast(e.message, true); }
@@ -738,7 +779,8 @@ const prosesUlang = tundaan(async () => {
   R.studio = null; if (R.lihat === "studio") { if (Pm.main) hentikanPutar(); gambarGelombang(); }
   $("#btnDengar span").textContent = t("memproses");
   try {
-    const hasil = await dsp.prosesStudio(R.asli, R.rate, P.efek, R.awal, R.akhir);
+    let hasil = await dsp.prosesStudio(R.asli, R.rate, { ...P.efek, fokus: R.musik ? 0 : P.fokusVokal }, R.awal, R.akhir);
+    if (R.musik) hasil = dsp.campurJalur(hasil, R.musik, R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0, awal: R.awal, akhir: R.akhir, panjangAsli: R.asli.length });
     if (versi !== R.versi) return;
     R.studio = hasil; if (R.lihat === "studio") gambarGelombang();
   } catch (e) { toast(t("efekGagal") + ": " + e.message, true); }

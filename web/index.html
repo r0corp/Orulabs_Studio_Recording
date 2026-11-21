@@ -110,6 +110,18 @@
             <button class="btn" id="btnHapus" data-tip-t="tipHapus"><i class="bi bi-trash3"></i></button>
           </div>
         </div>
+        <div class="baris-mix" id="barisMix" hidden>
+          <div class="mix-dua" id="mixDua">
+            <label data-tip-t="tipMixVokal"><i class="bi bi-mic-fill"></i><span data-t="vokal"></span><input type="range" id="mixVokal" min="0" max="150" step="5" value="100"><b id="mixVokalNilai">100%</b></label>
+            <label data-tip-t="tipMixMusik"><i class="bi bi-music-note-beamed"></i><span data-t="musik"></span><input type="range" id="mixMusik" min="0" max="150" step="5" value="70"><b id="mixMusikNilai">70%</b></label>
+            <div class="sinkron" data-tip-t="tipSinkron"><i class="bi bi-stopwatch"></i><span data-t="sinkron"></span><button id="sinkronKurang">−</button><b id="sinkronNilai">0 ms</b><button id="sinkronTambah">+</button></div>
+          </div>
+          <div class="mix-satu" id="mixSatu">
+            <i class="bi bi-sliders2"></i><span data-t="keseimbangan"></span>
+            <small data-t="musik"></small><input type="range" id="fokusVokal" min="-100" max="100" step="10" value="0"><small data-t="vokal"></small><b id="fokusNilai">0</b>
+            <em data-t="satuJalurKet"></em>
+          </div>
+        </div>
         <div class="gaya-rapikan" id="gayaRapikan" hidden>
           <span data-t="pilihHasil"></span>
           <button data-g="1"><b>1</b><span data-t="gaya1"></span></button>
@@ -194,6 +206,7 @@
         <div class="pg-kotak">
           <div class="pg-baris"><i class="bi bi-graph-up-arrow"></i><div class="nm"><span data-t="keraskanSingkat"></span><small data-t="keraskanSingkatK"></small></div><span class="sw" id="swKeraskan"></span></div>
           <div class="pg-baris"><i class="bi bi-link-45deg"></i><div class="nm"><span data-t="sinkronSingkat"></span><small data-t="sinkronSingkatK"></small></div><span class="sw" id="swSinkron"></span></div>
+          <div class="pg-baris"><i class="bi bi-layers"></i><div class="nm"><span data-t="duaJalur"></span><small data-t="duaJalurK"></small></div><span class="sw" id="swDuaJalur"></span></div>
           <div class="pg-baris"><i class="bi bi-collection-play"></i><div class="nm"><span data-t="autoplay"></span><small data-t="autoplaySingkatK"></small></div><span class="sw" id="swAutoplay"></span></div>
           <div class="pg-baris"><i class="bi bi-volume-up"></i><div class="nm" data-t="tesSuara"></div><button class="btn kecil" id="btnTesSuara"><i class="bi bi-play-fill"></i><span data-t="tes"></span></button></div>
         </div>

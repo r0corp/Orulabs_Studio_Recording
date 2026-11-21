@@ -1,4 +1,4 @@
-# Build Orulabs Studio Recording.
+﻿# Build Orulabs Studio Recording.
 # Hasil di folder dist:
 #   - "Orulabs Studio Recording\"                 (exe + folder web)
 #   - Orulabs-Studio-Recording.zip                 (dipakai update otomatis, lampirkan di rilis GitHub)
@@ -26,7 +26,7 @@ New-Item -ItemType Directory -Force $keluar | Out-Null
 
 & $csc /nologo /target:winexe /optimize+ "/out:$keluar\$nama.exe" `
     "/win32icon:$akar\web\assets\brand\ikon-studio.ico" `
-    /r:System.Windows.Forms.dll /r:System.Security.dll /r:Microsoft.VisualBasic.dll `
+    /r:System.Windows.Forms.dll /r:System.Web.dll /r:System.Security.dll /r:Microsoft.VisualBasic.dll `
     /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll `
     "$akar\src\*.cs"
 if ($LASTEXITCODE -ne 0) { throw "Compile gagal" }

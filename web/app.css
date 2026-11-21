@@ -672,3 +672,21 @@ canvas { display: block; width: 100%; height: 100%; }
 .dd-op .bi-check2 { color: var(--p); font-size: 15px; }
 .dd-op:hover, .dd-op.sorot { background: var(--surface-2); }
 .dd-op.on { background: rgba(var(--p-rgb), .18); }
+
+/* ===== Editor v1.2: tanpa nama rekaman, baris Mix ===== */
+#namaRekaman { display: none; }
+.editor > .card-h h3 { flex: none; }
+.editor > .card-h { margin-bottom: 8px; }
+.baris-mix { flex: none; display: flex; align-items: center; gap: 14px; margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; }
+.mix-dua, .mix-satu { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; flex-wrap: nowrap; }
+.baris-mix label { display: inline-flex; align-items: center; gap: 7px; flex: 1; min-width: 0; cursor: default; }
+.baris-mix i { color: var(--p); font-size: 14px; }
+.baris-mix span { font-weight: 600; white-space: nowrap; }
+.baris-mix input[type=range] { flex: 1; min-width: 60px; }
+.baris-mix b { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; font-size: 11.5px; }
+.baris-mix small { color: var(--muted); font-size: 11px; }
+.baris-mix em { font-style: normal; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sinkron { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.sinkron button { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-weight: 700; line-height: 1; cursor: pointer; padding: 0; }
+.sinkron b { min-width: 52px; text-align: center; }
+.mix-satu input[type=range] { max-width: 260px; }

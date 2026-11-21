@@ -296,6 +296,12 @@ async function rantaiWebAudio(x, rate, s) {
     const jelas = ctx.createBiquadFilter(); jelas.type = "peaking"; jelas.frequency.value = 2800; jelas.Q.value = 0.7; jelas.gain.value = 4.5 * e; sambung(jelas);
     const udara = ctx.createBiquadFilter(); udara.type = "highshelf"; udara.frequency.value = 10000; udara.gain.value = 2 * e; sambung(udara);
   }
+  if (s.fokus) {
+    const f = s.fokus / 100;
+    const tengah = ctx.createBiquadFilter(); tengah.type = "peaking"; tengah.frequency.value = 1600; tengah.Q.value = 0.5; tengah.gain.value = 4 * f; sambung(tengah);
+    const bawah = ctx.createBiquadFilter(); bawah.type = "lowshelf"; bawah.frequency.value = 180; bawah.gain.value = -4 * f; sambung(bawah);
+    const atas = ctx.createBiquadFilter(); atas.type = "highshelf"; atas.frequency.value = 7000; atas.gain.value = -3 * f; sambung(atas);
+  }
   if (s.hangat) {
     // hangat: badan suara sedikit lebih tebal, nada paling tinggi sedikit lebih lembut
     const badanB = ctx.createBiquadFilter(); badanB.type = "lowshelf"; badanB.frequency.value = 200; badanB.gain.value = 1.5; sambung(badanB);
@@ -465,4 +471,42 @@ export async function prosesStudio(x, rate, s, awal = 0, akhir = 1) {
   y = await rantaiWebAudio(y, rate, s);
   y = s.keraskanAktif ? keraskan(y, rate, s.vokalMaju ? -14 : -16, 4) : amankan(y);
   return y;
+}
+
+// ================= Rekam 2 jalur =================
+/** Ubah sample rate (interpolasi linear, cukup untuk musik pengiring). */
+export function ubahRate(x, dari, ke) {
+  if (dari === ke) return x;
+  const n = Math.floor(x.length * ke / dari), y = new Float32Array(n), r = dari / ke;
+  for (let i = 0; i < n; i++) { const p = i * r, a = Math.floor(p), f = p - a; y[i] = (x[a] || 0) * (1 - f) + (x[a + 1] || 0) * f; }
+  return y;
+}
+
+/** Cari keterlambatan vokal terhadap musik (ms) dari kemiripan naik-turun volume. null bila tidak yakin. */
+export function cariGeser(vokal, musik, rate) {
+  const win = Math.floor(rate / 100), maks = Math.min(Math.floor(Math.min(vokal.length, musik.length) / win), 9000);
+  if (maks < 300) return null;
+  const env = (x) => { const e = new Float32Array(maks); for (let w = 0; w < maks; w++) { let t = 0; for (let i = w * win; i < (w + 1) * win; i++) t += x[i] * x[i]; e[w] = Math.sqrt(t / win); } return e; };
+  const ev = env(vokal), em = env(musik);
+  const norm = (e) => { let m = 0; for (const v of e) m += v; m /= e.length; let s = 0; for (let k = 0; k < e.length; k++) { e[k] -= m; s += e[k] * e[k]; } return Math.sqrt(s) || 1; };
+  const sv = norm(ev), sm = norm(em);
+  let terbaik = -1, lag = 0;
+  for (let L = 0; L <= 80; L++) { let t = 0; for (let k = 0; k + L < maks; k++) t += em[k] * ev[k + L]; const r = t / (sv * sm); if (r > terbaik) { terbaik = r; lag = L; } }
+  return terbaik > 0.35 ? lag * 10 : null;
+}
+
+/**
+ * Campur vokal hasil studio dengan jalur musik.
+ * o: { volV, volM, geserMs (musik ditunda), awal, akhir (0..1 dari rekaman vokal asli), panjangAsli }
+ */
+export function campurJalur(vokal, musik, rate, o) {
+  const mulai = Math.floor(o.awal * o.panjangAsli), akhir = Math.ceil(o.akhir * o.panjangAsli), panjang = akhir - mulai;
+  const n = Math.max(vokal.length, panjang), y = new Float32Array(n), geser = Math.round(o.geserMs / 1000 * rate);
+  const fade = Math.min(Math.floor(rate * 0.3), Math.floor(panjang / 4));
+  for (let i = 0; i < n; i++) {
+    let m = 0;
+    if (i < panjang) { const j = mulai + i - geser; if (j >= 0 && j < musik.length) m = musik[j]; const g = i < fade ? i / fade : i > panjang - fade ? Math.max(0, (panjang - i) / fade) : 1; m *= g; }
+    y[i] = (vokal[i] || 0) * o.volV + m * o.volM;
+  }
+  return keraskan(y, rate, -14, 4);
 }
