@@ -1,0 +1,14 @@
+{
+  "name": "orulab-studio-web",
+  "private": true,
+  "description": "Bundel library Claude untuk tampilan Orulab Studio",
+  "scripts": {
+    "build": "esbuild claude-entry.js --bundle --format=esm --minify --outfile=../web/vendor/claude.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

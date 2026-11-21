@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="id" data-ol-skin="glass-dark" data-warna="biru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orulab Studio</title>
+<link rel="icon" href="assets/brand/favicon.ico">
+<link rel="stylesheet" href="vendor/inter/inter.css">
+<link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <!-- Bar atas -->
+  <header class="topbar glass">
+    <div class="brandwrap">
+      <img class="logo" src="assets/brand/orulabs-icon-192.png" alt="Orulabs">
+      <div class="brand">
+        <div class="wordmark"><img class="wm-dark" src="assets/brand/orulabs-logo-white.png" alt="Orulabs"><img class="wm-light" src="assets/brand/orulabs-logo.png" alt="Orulabs"><em>Studio</em></div>
+        <span>Karaoke &amp; rekam</span>
+      </div>
+    </div>
+    <form class="search" id="cari">
+      <i class="bi bi-youtube"></i>
+      <input id="kata" placeholder="Cari lagu karaoke di YouTube…" autocomplete="off">
+      <button type="submit">Cari</button>
+    </form>
+    <div class="tools">
+      <span class="chip" id="siap" title="Status perangkat"><span class="dot" id="siapDot"></span><span id="siapTeks">Memeriksa…</span></span>
+      <div class="swatches" id="warna" title="Warna tema">
+        <button data-w="biru" style="background:#0190fb" aria-label="Biru"></button>
+        <button data-w="ungu" style="background:#8b5cf6" aria-label="Ungu"></button>
+        <button data-w="tosca" style="background:#14b8a6" aria-label="Tosca"></button>
+        <button data-w="senja" style="background:#f97316" aria-label="Senja"></button>
+        <button data-w="mawar" style="background:#f43f5e" aria-label="Mawar"></button>
+      </div>
+      <div class="mode" id="mode">
+        <button data-m="glass-dark" title="Gelap"><i class="bi bi-moon-stars-fill"></i></button>
+        <button data-m="glass-light" title="Terang"><i class="bi bi-sun-fill"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <!-- YouTube -->
+    <section class="card glass yt">
+      <div class="player" id="player">
+        <div id="ytPlayer"></div>
+        <div class="kosong" id="ytKosong"><div><i class="bi bi-youtube"></i><b>Cari lagu karaoke di kotak atas</b>Pilih hasilnya, videonya diputar di sini.</div></div>
+      </div>
+      <div class="now">
+        <div><b id="ytJudul">Belum ada lagu</b><span class="muted" style="font-size:11.5px" id="ytInfo">Suara YouTube keluar lewat speaker utama Windows</span></div>
+        <div class="ctl">
+          <button class="btn" id="ytPrev" title="Lagu sebelumnya"><i class="bi bi-skip-backward-fill"></i></button>
+          <button class="btn primary" id="ytPlay"><i class="bi bi-play-fill"></i><span>Putar</span></button>
+          <button class="btn" id="ytNext" title="Lagu berikutnya"><i class="bi bi-skip-forward-fill"></i></button>
+        </div>
+      </div>
+      <div class="results-wrap">
+        <button class="pager" id="resPrev" title="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <div class="results" id="hasil"><div class="info">Hasil pencarian muncul di sini</div></div>
+        <button class="pager" id="resNext" title="Berikutnya"><i class="bi bi-chevron-right"></i></button>
+      </div>
+    </section>
+
+    <!-- Perekam -->
+    <section class="card glass rec">
+      <div class="card-h"><h3><i class="bi bi-record-circle"></i>Perekam</h3><span class="rec-pill diam" id="recPill"><i></i><span>SIAP</span></span></div>
+      <div class="ready">
+        <div id="cekInput"><i class="bi bi-check-circle-fill"></i><span>Converter</span></div>
+        <div id="cekOutput"><i class="bi bi-check-circle-fill"></i><span>Speaker</span></div>
+        <div id="cekLevel"><i class="bi bi-check-circle-fill"></i><span>Level pas</span></div>
+        <div id="cekYt"><i class="bi bi-check-circle-fill"></i><span>YouTube</span></div>
+      </div>
+      <div class="fill"></div>
+      <div class="timer" id="timer">00:00</div>
+      <div class="muted" id="timerKet">Tekan tombol merah untuk mulai merekam</div>
+      <div class="transport">
+        <button class="tbtn" id="btnStop" title="Stop"><i class="bi bi-stop-fill"></i></button>
+        <button class="tbtn big" id="btnRekam" title="Rekam"><i class="bi bi-mic-fill"></i></button>
+        <button class="tbtn play" id="btnPutar" title="Putar rekaman"><i class="bi bi-play-fill"></i></button>
+      </div>
+      <div class="label">Level suara</div>
+      <div class="meter" id="meter"></div>
+      <div class="scale"><span>-60</span><span>-30</span><span>-12</span><span>-3</span><span>0 dB</span></div>
+      <div class="fill"></div>
+      <div class="field">
+        <div class="row"><span class="label">Volume input</span><b style="font-size:12px" id="volNilai">–</b></div>
+        <input type="range" id="volInput" min="0" max="100" value="90">
+      </div>
+      <div class="field">
+        <div class="label">Rekam dari</div>
+        <label class="select"><i class="bi bi-usb-symbol" style="color:var(--p)"></i><select id="pilihInput"></select><i class="bi bi-chevron-down"></i></label>
+      </div>
+      <div class="field">
+        <div class="label">Putar rekaman ke</div>
+        <label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select id="pilihOutput"></select><i class="bi bi-chevron-down"></i></label>
+      </div>
+    </section>
+
+    <!-- Daftar rekaman + gelombang -->
+    <section class="card glass wave">
+      <div class="files">
+        <div class="card-h"><h3><i class="bi bi-collection-play"></i>Rekaman saya</h3><span class="muted" style="font-size:11px" id="jumlah"></span></div>
+        <div class="list" id="daftar"><div class="info">Belum ada rekaman.</div></div>
+      </div>
+      <div class="sep"></div>
+      <div class="editor">
+        <div class="card-h">
+          <h3><i class="bi bi-soundwave"></i><span id="namaRekaman">Belum ada rekaman dipilih</span></h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="ab" id="ab"><button data-v="asli" class="on">Asli</button><button data-v="studio">Hasil studio</button></div>
+            <button class="btn" id="btnGanti" title="Ganti nama"><i class="bi bi-pencil"></i></button>
+            <button class="btn" id="btnFolder" title="Buka folder"><i class="bi bi-folder2-open"></i></button>
+            <button class="btn" id="btnHapus" title="Hapus (ke Recycle Bin)"><i class="bi bi-trash3"></i></button>
+          </div>
+        </div>
+        <div class="wave-wrap" id="gelombang">
+          <canvas id="wave"></canvas>
+          <div class="trim l" id="trimL"></div><div class="trim r" id="trimR"></div>
+          <div class="handle" id="hL" title="Seret untuk memotong awal"></div><div class="handle" id="hR" title="Seret untuk memotong akhir"></div>
+          <div class="kosong" id="waveKosong">Rekam atau pilih rekaman untuk melihat gelombang suara</div>
+        </div>
+        <div class="ruler" id="penggaris"></div>
+      </div>
+    </section>
+
+    <!-- Studio / Analisa -->
+    <section class="card glass side">
+      <div class="tabs">
+        <button data-tab="studio" class="on"><i class="bi bi-magic"></i>Studio</button>
+        <button data-tab="analisa"><i class="bi bi-graph-up"></i>Analisa</button>
+      </div>
+
+      <div class="pane on" id="studio">
+        <div class="claude">
+          <div class="top"><div class="ico"><i class="bi bi-stars"></i></div><div><b>Rapikan dengan Claude</b><span>Claude membaca hasil analisa lalu memilih efek terbaik</span></div></div>
+          <div class="say" id="claudeSay"><i class="bi bi-info-circle"></i> Pilih rekaman, lalu tekan tombol di bawah.</div>
+          <button class="go" id="btnRapikan"><i class="bi bi-stars"></i><span>Rapikan sekarang</span></button>
+          <button class="kunci" id="btnKunci"><i class="bi bi-key"></i><span>Atur kunci API Claude</span></button>
+        </div>
+        <div class="presets" id="preset"><button data-p="natural">Natural</button><button data-p="pop" class="on">Pop</button><button data-p="ballad">Ballad</button><button data-p="rock">Rock</button><button data-p="dangdut">Dangdut</button></div>
+        <div class="scroll">
+          <div class="fx" data-fx="desis"><div class="row"><i class="f bi bi-wind"></i><div><b>Bersihkan desis</b><span>Hilangkan dengung dan desis latar</span></div><span class="sw"></span></div><input type="range" min="0" max="100" value="40"></div>
+          <div class="fx" data-fx="penyeimbang"><div class="row"><i class="f bi bi-arrows-collapse"></i><div><b>Penyeimbang suara</b><span>Suara pelan dan keras jadi stabil</span></div><span class="sw"></span></div><input type="range" min="0" max="100" value="40"></div>
+          <div class="fx" data-fx="eq"><div class="row"><i class="f bi bi-sliders2"></i><div><b>EQ vokal</b><span>Bass rapi, vokal lebih jernih</span></div><span class="sw"></span></div><input type="range" min="0" max="100" value="50"></div>
+          <div class="fx" data-fx="desisS"><div class="row"><i class="f bi bi-soundwave"></i><div><b>Haluskan huruf "s"</b><span>Kurangi bunyi s dan sh yang tajam</span></div><span class="sw off"></span></div></div>
+          <div class="fx" data-fx="gema"><div class="row"><i class="f bi bi-broadcast"></i><div><b>Gema ruang</b><span>Kering sampai ruang konser</span></div><span class="sw"></span></div><input type="range" min="0" max="100" value="22"></div>
+          <div class="fx" data-fx="keraskan"><div class="row"><i class="f bi bi-volume-up"></i><div><b>Keraskan akhir</b><span>Setara lagu streaming, tanpa pecah</span></div><span class="sw"></span></div></div>
+          <div class="fx" data-fx="nada"><div class="row"><i class="f bi bi-music-note-beamed"></i><div><b>Nada lagu</b><span>Naik/turun bersama musik (semitone)</span></div><b style="flex:none;color:var(--p)" id="nadaNilai">0</b></div><input type="range" min="-4" max="4" step="1" value="0"></div>
+          <div class="fx lock"><div class="row"><i class="f bi bi-lock"></i><div><b>Koreksi nada vokal</b><span>Butuh rekaman vokal terpisah dari musik</span></div></div></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btnDengar"><i class="bi bi-headphones"></i><span>Dengar hasil</span></button>
+          <button class="btn primary" id="btnSimpanStudio"><i class="bi bi-download"></i>Simpan hasil</button>
+        </div>
+      </div>
+
+      <div class="pane" id="analisa">
+        <div class="stats">
+          <div class="stat"><span class="label">Pecah</span><b id="stPecah">–</b><em id="stPecahKet"></em></div>
+          <div class="stat"><span class="label">Bagian senyap</span><b id="stSenyap">–</b><em id="stSenyapKet"></em></div>
+          <div class="stat"><span class="label">Bass</span><b id="stBass">–</b><em id="stBassKet"></em></div>
+          <div class="stat"><span class="label">Vokal jelas</span><b id="stJelas">–</b><em id="stJelasKet"></em></div>
+        </div>
+        <div class="label" style="margin-top:14px">Keseimbangan nada</div>
+        <div class="bands" id="bands"></div>
+        <div class="tip" id="tip"><i class="bi bi-lightbulb-fill"></i><div>Pilih rekaman untuk melihat analisa.</div></div>
+      </div>
+    </section>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

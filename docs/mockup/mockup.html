@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="id" data-ol-skin="glass-dark" data-warna="biru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orulab Studio</title>
+<link rel="icon" href="assets/brand/favicon.ico">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* ===== Token tema: diadaptasi dari Admin Panel Orulabs Limited Edition (skin glass) ===== */
+:root {
+  --p: #0190fb; --p-rgb: 1, 144, 251; --p2: #6d5dfc;           /* warna utama + pasangan gradien */
+  --bg1: rgba(1,144,251,.55); --bg2: rgba(168,85,247,.45); --bg3: rgba(236,72,153,.35); --bg4: rgba(20,184,166,.35);
+  --radius: 14px; --gap: 12px; --blur: 18px;
+  --surface: rgba(15, 18, 30, 0.5); --surface-2: rgba(255, 255, 255, 0.07); --surface-3: rgba(255,255,255,.12);
+  --border: rgba(255, 255, 255, 0.12); --text: #f1f5f9; --muted: #a7b0c0;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.35); --solid: #121624; --track: rgba(255,255,255,.12);
+  --rec: #ff4d5e; --ok: #34d399; --warn: #fbbf24;
+}
+/* Pilihan warna */
+[data-warna="ungu"]  { --p: #8b5cf6; --p-rgb: 139, 92, 246; --p2: #ec4899; --bg1: rgba(139,92,246,.55); --bg2: rgba(236,72,153,.4); --bg3: rgba(59,130,246,.3); --bg4: rgba(168,85,247,.3); }
+[data-warna="tosca"] { --p: #14b8a6; --p-rgb: 20, 184, 166; --p2: #0ea5e9; --bg1: rgba(20,184,166,.5); --bg2: rgba(14,165,233,.4); --bg3: rgba(34,197,94,.3); --bg4: rgba(6,182,212,.35); }
+[data-warna="senja"] { --p: #f97316; --p-rgb: 249, 115, 22; --p2: #e11d48; --bg1: rgba(249,115,22,.5); --bg2: rgba(225,29,72,.4); --bg3: rgba(234,179,8,.3); --bg4: rgba(190,24,93,.3); }
+[data-warna="mawar"] { --p: #f43f5e; --p-rgb: 244, 63, 94; --p2: #a855f7; --bg1: rgba(244,63,94,.5); --bg2: rgba(168,85,247,.4); --bg3: rgba(251,113,133,.3); --bg4: rgba(99,102,241,.3); }
+[data-ol-skin="glass-light"] {
+  --surface: rgba(255, 255, 255, 0.58); --surface-2: rgba(255, 255, 255, 0.5); --surface-3: rgba(255,255,255,.75);
+  --border: rgba(255, 255, 255, 0.75); --text: #111827; --muted: #4b5563;
+  --shadow: 0 8px 32px rgba(15, 23, 42, 0.10); --solid: #e9eef8; --track: rgba(15,23,42,.12);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: "Inter", system-ui, "Segoe UI", sans-serif; font-size: 13px; color: var(--text); overflow: hidden;
+  background:
+    radial-gradient(40% 50% at 10% 8%, var(--bg1), transparent 70%),
+    radial-gradient(35% 45% at 90% 12%, var(--bg2), transparent 70%),
+    radial-gradient(45% 50% at 65% 100%, var(--bg3), transparent 70%),
+    radial-gradient(35% 40% at 0% 100%, var(--bg4), transparent 70%),
+    var(--solid);
+  background-attachment: fixed; transition: background .4s;
+}
+.glass {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%); backdrop-filter: blur(var(--blur)) saturate(160%);
+}
+.muted { color: var(--muted); }
+.label { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+button { font: inherit; cursor: pointer; color: inherit; }
+
+/* ===== Scrollbar kaca ===== */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border: 2px solid transparent; background-clip: padding-box; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(var(--p-rgb), .6); }
+[data-ol-skin="glass-light"] * { scrollbar-color: rgba(15,23,42,.25) transparent; }
+[data-ol-skin="glass-light"] ::-webkit-scrollbar-thumb { background-color: rgba(15,23,42,.22); }
+
+/* ===== Slider kaca ===== */
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: none; margin: 0; --v: 50%; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; border: 1px solid var(--border);
+  background: linear-gradient(90deg, var(--p), var(--p2)) 0 / var(--v) 100% no-repeat, var(--track); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%;
+  background: rgba(255,255,255,.95); border: 2px solid rgba(var(--p-rgb), .9); box-shadow: 0 0 0 4px rgba(var(--p-rgb), .2), 0 2px 8px rgba(0,0,0,.35); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; background: var(--track); }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--p), var(--p2)); }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--p); }
+
+/* ===== Kerangka satu layar ===== */
+.app { height: 100vh; display: flex; flex-direction: column; gap: var(--gap); padding: var(--gap); }
+.topbar { flex: none; display: flex; align-items: center; gap: 14px; height: 58px; padding: 0 14px; }
+.logo { flex: none; width: 38px; height: 38px; object-fit: contain; }
+.brand { flex: none; display: flex; flex-direction: column; gap: 3px; }
+.wordmark { display: flex; align-items: center; gap: 7px; }
+.wordmark img { height: 15px; width: auto; display: block; }
+.wordmark .wm-light { display: none; }
+[data-ol-skin="glass-light"] .wordmark .wm-dark { display: none; }
+[data-ol-skin="glass-light"] .wordmark .wm-light { display: block; }
+.wordmark em { font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px;
+  color: #fff; background: linear-gradient(135deg, var(--p), var(--p2)); }
+.brand span { font-size: 11px; color: var(--muted); }
+.search { flex: 1; min-width: 0; max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 5px 0 14px; height: 40px;
+  border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.search .bi-youtube { color: #ff3b3b; font-size: 18px; }
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text); font: inherit; font-size: 13.5px; }
+.search input::placeholder { color: var(--muted); }
+.search button { flex: none; height: 30px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--p); color: #fff; font-weight: 600; }
+.tools { flex: none; display: flex; align-items: center; gap: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 500;
+  background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(52, 211, 153, .2); }
+.swatches { display: flex; gap: 6px; padding: 5px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.swatches button { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
+.swatches button.on { border-color: #fff; box-shadow: 0 0 0 2px rgba(var(--p-rgb), .6); }
+.mode { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.mode button { width: 30px; height: 26px; border-radius: 999px; border: 0; background: none; color: var(--muted); }
+.mode button.on { background: var(--p); color: #fff; }
+
+.stage { flex: 1; min-height: 0; display: grid; gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr) 320px 380px; grid-template-rows: minmax(0, 1fr) 200px;
+  grid-template-areas: "yt rec side" "wave wave side"; }
+.card { padding: 14px; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.card-h { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; min-width: 0; }
+.card-h h3 { margin: 0; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface-2); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.btn.primary { background: var(--p); border-color: var(--p); color: #fff; }
+
+/* ===== YouTube ===== */
+.yt { grid-area: yt; }
+.player { flex: 1; min-height: 160px; position: relative; border-radius: 12px; overflow: hidden; background: #000; display: grid; place-items: center; }
+.video { height: 100%; aspect-ratio: 16 / 9; max-width: 100%; background: linear-gradient(160deg, #1d2b64, #3a1c71 55%, #0b0f1e); display: grid; place-items: center; }
+.lyric { text-align: center; font-weight: 700; text-shadow: 0 2px 12px rgba(0,0,0,.6); padding: 0 20px; }
+.lyric .l1 { font-size: clamp(16px, 2vw, 30px); color: #fff; }
+.lyric .l1 span { color: #5fd3ff; }
+.lyric .l2 { font-size: clamp(12px, 1.4vw, 21px); color: rgba(255,255,255,.55); margin-top: 8px; }
+.player .tag { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,.45); color: #fff; border-color: rgba(255,255,255,.15); }
+.player .bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 14px 10px; background: linear-gradient(transparent, rgba(0,0,0,.65)); }
+.track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); position: relative; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.track > div { position: absolute; inset: 0 auto 0 0; width: 38%; border-radius: 3px; background: linear-gradient(90deg, #ff3b3b, #ff7a59); }
+.track > div::after { content: ""; position: absolute; right: -6px; top: -4px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255,59,59,.25); }
+.now { flex: none; display: flex; align-items: center; gap: 12px; margin: 10px 0; min-width: 0; }
+.now > div:first-child { min-width: 0; }
+.now b { display: block; font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now .ctl { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.results { flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.res { display: flex; gap: 9px; align-items: center; border-radius: 10px; padding: 6px; background: var(--surface-2); border: 1px solid transparent; cursor: pointer; min-width: 0; }
+.res.on { border-color: rgba(var(--p-rgb), .7); }
+.thumb { flex: none; width: 76px; aspect-ratio: 16/9; border-radius: 6px; position: relative; }
+.thumb small { position: absolute; right: 3px; bottom: 3px; font-size: 10px; padding: 0 4px; border-radius: 3px; background: rgba(0,0,0,.7); color: #fff; }
+.res div:last-child { min-width: 0; }
+.res b { display: block; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res span { font-size: 11px; color: var(--muted); }
+
+/* ===== Perekam ===== */
+.rec { grid-area: rec; overflow: auto; }
+.rec-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  color: var(--rec); background: rgba(255, 77, 94, .14); letter-spacing: .06em; }
+.rec-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--rec); animation: kedip 1s infinite; }
+@keyframes kedip { 50% { opacity: .25; } }
+.ready { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ready div { display: flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 6px 8px; border-radius: 8px; background: var(--surface-2); white-space: nowrap; }
+.ready i { color: var(--ok); }
+.ready .no i { color: var(--warn); }
+.fill { flex: 1; min-height: 8px; }
+.timer { font-size: 44px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.timer + .muted { text-align: center; font-size: 11.5px; }
+.transport { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 16px 0 18px; }
+.tbtn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); font-size: 17px; }
+.tbtn.big { width: 70px; height: 70px; border: 0; background: var(--rec); color: #fff; font-size: 24px; box-shadow: 0 0 0 6px rgba(255,77,94,.18), 0 8px 24px rgba(255,77,94,.35); }
+.tbtn.play { background: var(--p); border: 0; color: #fff; }
+.meter { display: flex; gap: 3px; height: 12px; margin-top: 7px; }
+.meter i { flex: 1; border-radius: 2px; background: var(--track); }
+.scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.field { margin-top: 12px; }
+.field .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.select { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 11px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12.5px; margin-top: 5px; min-width: 0; }
+.select span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.select i:last-child { margin-left: auto; color: var(--muted); }
+
+/* ===== Rekaman: daftar + gelombang ===== */
+.wave { grid-area: wave; flex-direction: row; gap: 14px; }
+.files { flex: none; width: 250px; display: flex; flex-direction: column; min-height: 0; }
+.list { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+.item { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; }
+.item.on { background: rgba(var(--p-rgb), .16); }
+.item .ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); color: var(--p); }
+.item b { display: block; font-size: 12.5px; font-weight: 600; }
+.item span { font-size: 11px; color: var(--muted); }
+.item .r { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sep { flex: none; width: 1px; background: var(--border); }
+.editor { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ab { display: inline-flex; padding: 3px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+.ab button { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.ab button.on { background: var(--p); color: #fff; }
+.wave-wrap { flex: 1; min-height: 60px; position: relative; border-radius: 10px; background: rgba(0,0,0,.18); overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; }
+.trim { position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,.45); }
+.trim.l { left: 0; width: 4%; border-right: 3px solid var(--warn); }
+.trim.r { right: 0; width: 6%; border-left: 3px solid var(--warn); }
+.ruler { flex: none; display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
+
+/* ===== Panel samping: Studio / Analisa ===== */
+.side { grid-area: side; }
+.tabs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 11px; background: var(--surface-2); margin-bottom: 12px; }
+.tabs button { height: 32px; border: 0; border-radius: 8px; background: none; font-weight: 600; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tabs button.on { background: var(--p); color: #fff; }
+.pane { flex: 1; min-height: 0; display: none; flex-direction: column; }
+.pane.on { display: flex; }
+.scroll { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; margin-right: -4px; }
+
+.claude { flex: none; position: relative; border-radius: 13px; padding: 12px; background: linear-gradient(135deg, rgba(var(--p-rgb),.22), rgba(217,119,87,.18));
+  border: 1px solid rgba(255,255,255,.18); }
+.claude .top { display: flex; align-items: center; gap: 10px; }
+.claude .ico { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #d97757; color: #fff; font-size: 16px; }
+.claude b { display: block; font-size: 13.5px; }
+.claude .top span { font-size: 11.5px; color: var(--muted); }
+.claude .say { margin: 10px 0; padding: 9px 11px; border-radius: 10px; background: rgba(0,0,0,.2); font-size: 12px; line-height: 1.5; }
+[data-ol-skin="glass-light"] .claude .say { background: rgba(255,255,255,.55); }
+.claude .say i { color: var(--ok); }
+.claude .go { width: 100%; height: 40px; border: 0; border-radius: 10px; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, #d97757, var(--p)); box-shadow: 0 8px 22px rgba(217,119,87,.3); }
+.presets { display: flex; gap: 6px; margin: 12px 0 4px; flex-wrap: wrap; }
+.presets button { height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); font-size: 12px; font-weight: 500; }
+.presets button.on { background: rgba(var(--p-rgb), .22); border-color: rgba(var(--p-rgb), .7); }
+.fx { margin-top: 8px; padding: 9px 11px; border-radius: 11px; background: var(--surface-2); }
+.fx .row { display: flex; align-items: center; gap: 10px; }
+.fx .row i.f { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: rgba(var(--p-rgb), .18); color: var(--p); font-size: 13px; }
+.fx .row div { flex: 1; min-width: 0; }
+.fx .row b { display: block; font-size: 12.5px; font-weight: 600; }
+.fx .row span { font-size: 11px; color: var(--muted); }
+.fx input[type=range] { margin-top: 6px; }
+.fx.lock { opacity: .55; }
+.fx.lock .row i.f { background: var(--track); color: var(--muted); }
+.sw { flex: none; width: 32px; height: 18px; border-radius: 9px; background: var(--p); position: relative; }
+.sw::after { content: ""; position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+.sw.off { background: var(--track); }
+.sw.off::after { right: auto; left: 2px; }
+.actions { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.actions .btn { height: 38px; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { padding: 10px 12px; border-radius: 11px; background: var(--surface-2); }
+.stat b { display: block; font-size: 19px; font-weight: 700; margin-top: 2px; }
+.stat em { font-style: normal; font-size: 11px; color: var(--ok); display: flex; align-items: center; gap: 4px; }
+.bands { height: 170px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; align-items: end; margin-top: 10px; }
+.band { display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+.band .b { width: 100%; max-width: 44px; border-radius: 7px 7px 3px 3px; background: var(--track); }
+.band .b.ok { background: linear-gradient(180deg, var(--p2), var(--p)); }
+.band small { font-size: 10.5px; color: var(--muted); text-align: center; line-height: 1.25; }
+.band strong { font-size: 11.5px; }
+.tip { display: flex; gap: 9px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-radius: 11px;
+  background: rgba(52, 211, 153, .12); border: 1px solid rgba(52, 211, 153, .3); font-size: 12px; line-height: 1.45; }
+.tip i { color: var(--ok); font-size: 15px; }
+
+/* ===== Responsif ===== */
+@media (max-width: 1500px) {
+  .stage { grid-template-columns: minmax(0, 1fr) 300px 340px; }
+  .results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .files { width: 210px; }
+}
+/* Layar sempit atau pendek: tampilan bertumpuk dan boleh scroll */
+@media (max-width: 1280px), (max-height: 820px) {
+  body { overflow: auto; }
+  .app { height: auto; min-height: 100vh; }
+  .stage { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: 520px auto 600px;
+    grid-template-areas: "yt rec" "wave wave" "side side"; }
+  .wave { height: 210px; }
+  .tools .swatches { display: none; }
+}
+@media (max-width: 820px) {
+  .topbar { flex-wrap: wrap; height: auto; padding: 10px 12px; }
+  .search { order: 3; flex-basis: 100%; max-width: none; }
+  .stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "yt" "rec" "wave" "side"; }
+  .tools { width: 100%; justify-content: space-between; order: 2; }
+  .tools .swatches { display: flex; }
+  .player { min-height: 200px; }
+  .results { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .thumb { width: 52px; }
+  .now { flex-wrap: wrap; }
+  .wave { flex-direction: column; height: auto; }
+  .files { width: auto; max-height: 160px; }
+  .sep { display: none; }
+  .wave-wrap { height: 90px; flex: none; }
+  .side { height: 640px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Bar atas -->
+  <header class="topbar glass">
+    <img class="logo" src="assets/brand/orulabs-icon-192.png" alt="Orulabs">
+    <div class="brand">
+      <div class="wordmark"><img class="wm-dark" src="assets/brand/orulabs-logo-white.png" alt="Orulabs"><img class="wm-light" src="assets/brand/orulabs-logo.png" alt="Orulabs"><em>Studio</em></div>
+      <span>Karaoke &amp; rekam</span>
+    </div>
+    <form class="search" onsubmit="return false">
+      <i class="bi bi-youtube"></i>
+      <input placeholder="Cari lagu karaoke di YouTube…" value="karaoke bunga terakhir">
+      <button>Cari</button>
+    </form>
+    <div class="tools">
+      <span class="chip" title="Converter dan Bluetooth mixer tersambung"><span class="dot"></span>Siap rekam</span>
+      <div class="swatches" id="warna" title="Warna tema">
+        <button data-w="biru" class="on" style="background:#0190fb" aria-label="Biru"></button>
+        <button data-w="ungu" style="background:#8b5cf6" aria-label="Ungu"></button>
+        <button data-w="tosca" style="background:#14b8a6" aria-label="Tosca"></button>
+        <button data-w="senja" style="background:#f97316" aria-label="Senja"></button>
+        <button data-w="mawar" style="background:#f43f5e" aria-label="Mawar"></button>
+      </div>
+      <div class="mode" id="mode">
+        <button data-m="glass-dark" class="on" title="Gelap"><i class="bi bi-moon-stars-fill"></i></button>
+        <button data-m="glass-light" title="Terang"><i class="bi bi-sun-fill"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <!-- YouTube -->
+    <section class="card glass yt">
+      <div class="player">
+        <div class="video"><div class="lyric"><div class="l1"><span>Lirik karaoke yang sedang</span> dinyanyikan</div><div class="l2">baris lirik berikutnya muncul di sini</div></div></div>
+        <span class="chip tag"><i class="bi bi-youtube" style="color:#ff3b3b"></i>YouTube</span>
+        <div class="bar"><div class="track"><div></div></div></div>
+      </div>
+      <div class="now">
+        <div><b>Judul lagu karaoke</b><span class="muted" style="font-size:11.5px">Nama channel · 01:36 / 04:12</span></div>
+        <div class="ctl">
+          <button class="btn"><i class="bi bi-skip-backward-fill"></i></button>
+          <button class="btn primary"><i class="bi bi-pause-fill"></i>Jeda</button>
+          <button class="btn"><i class="bi bi-skip-forward-fill"></i></button>
+        </div>
+      </div>
+      <div class="results">
+        <div class="res on"><div class="thumb" style="background:linear-gradient(135deg,#3a1c71,#d76d77)"><small>4:12</small></div><div><b>Hasil karaoke 1</b><span>Channel karaoke</span></div></div>
+        <div class="res"><div class="thumb" style="background:linear-gradient(135deg,#0f2027,#2c5364)"><small>3:58</small></div><div><b>Hasil karaoke 2</b><span>Channel karaoke</span></div></div>
+        <div class="res"><div class="thumb" style="background:linear-gradient(135deg,#1d4350,#a43931)"><small>4:30</small></div><div><b>Hasil karaoke 3</b><span>Channel karaoke</span></div></div>
+        <div class="res"><div class="thumb" style="background:linear-gradient(135deg,#232526,#0190fb)"><small>5:02</small></div><div><b>Hasil karaoke 4</b><span>Channel karaoke</span></div></div>
+      </div>
+    </section>
+
+    <!-- Perekam -->
+    <section class="card glass rec">
+      <div class="card-h"><h3><i class="bi bi-record-circle"></i>Perekam</h3><span class="rec-pill"><i></i>REC</span></div>
+      <div class="ready">
+        <div><i class="bi bi-check-circle-fill"></i>Converter</div>
+        <div><i class="bi bi-check-circle-fill"></i>Bluetooth mixer</div>
+        <div><i class="bi bi-check-circle-fill"></i>Level pas</div>
+        <div class="no"><i class="bi bi-exclamation-circle-fill"></i>Iklan YouTube</div>
+      </div>
+      <div class="fill"></div>
+      <div class="timer" id="timer">01:24</div>
+      <div class="muted">Merekam · tersimpan otomatis saat Stop</div>
+      <div class="transport">
+        <button class="tbtn" title="Stop"><i class="bi bi-stop-fill"></i></button>
+        <button class="tbtn big" title="Rekam"><i class="bi bi-mic-fill"></i></button>
+        <button class="tbtn play" title="Putar rekaman"><i class="bi bi-play-fill"></i></button>
+      </div>
+      <div class="label">Level suara</div>
+      <div class="meter" id="meter"></div>
+      <div class="scale"><span>-60</span><span>-30</span><span>-12</span><span>-3</span><span>0 dB</span></div>
+      <div class="fill"></div>
+      <div class="field">
+        <div class="row"><span class="label">Volume input</span><b style="font-size:12px">90%</b></div>
+        <input type="range" value="90">
+      </div>
+      <div class="field">
+        <div class="label">Rekam dari</div>
+        <div class="select"><i class="bi bi-usb-symbol" style="color:var(--p)"></i><span>Converter (YA USB Audio)</span><i class="bi bi-chevron-down"></i></div>
+      </div>
+      <div class="field">
+        <div class="label">Putar ke</div>
+        <div class="select"><i class="bi bi-bluetooth" style="color:var(--p)"></i><span>Mixer lewat Bluetooth</span><i class="bi bi-chevron-down"></i></div>
+      </div>
+    </section>
+
+    <!-- Daftar rekaman + gelombang -->
+    <section class="card glass wave">
+      <div class="files">
+        <div class="card-h"><h3><i class="bi bi-collection-play"></i>Rekaman saya</h3><span class="muted" style="font-size:11px">5 file</span></div>
+        <div class="list">
+          <div class="item on"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Rekaman 15.02</b><span>Hari ini · Studio</span></div><div class="r">01:14</div></div>
+          <div class="item"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Rekaman 14.58</b><span>Hari ini · Asli</span></div><div class="r">00:28</div></div>
+          <div class="item"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Rekaman 14.52</b><span>Hari ini · Asli</span></div><div class="r">00:30</div></div>
+          <div class="item"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Rekaman 14.35</b><span>Hari ini · Asli</span></div><div class="r">01:32</div></div>
+          <div class="item"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Rekaman 14 Nov</b><span>Minggu lalu · Asli</span></div><div class="r">03:05</div></div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="editor">
+        <div class="card-h">
+          <h3><i class="bi bi-soundwave"></i>Rekaman 15.02</h3>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="ab" id="ab"><button>Asli</button><button class="on">Hasil studio</button></div>
+            <button class="btn" title="Ganti nama"><i class="bi bi-pencil"></i></button>
+            <button class="btn" title="Buka folder"><i class="bi bi-folder2-open"></i></button>
+            <button class="btn" title="Hapus"><i class="bi bi-trash3"></i></button>
+          </div>
+        </div>
+        <div class="wave-wrap"><canvas id="wave"></canvas><div class="trim l"></div><div class="trim r"></div></div>
+        <div class="ruler"><span>00:00</span><span>00:15</span><span>00:30</span><span>00:45</span><span>01:00</span><span>01:14</span></div>
+      </div>
+    </section>
+
+    <!-- Studio / Analisa -->
+    <section class="card glass side">
+      <div class="tabs">
+        <button data-tab="studio" class="on"><i class="bi bi-magic"></i>Studio</button>
+        <button data-tab="analisa"><i class="bi bi-graph-up"></i>Analisa</button>
+      </div>
+
+      <div class="pane on" id="studio">
+        <div class="claude">
+          <div class="top"><div class="ico"><i class="bi bi-stars"></i></div><div><b>Rapikan dengan Claude</b><span>Claude membaca hasil analisa lalu memilih efek terbaik</span></div></div>
+          <div class="say"><i class="bi bi-check2-circle"></i> "Vokal agak tenggelam di bagian reff dan ada desis halus. Saya nyalakan Penyeimbang suara 40%, Bersihkan desis, dan sedikit gema ruang."</div>
+          <button class="go"><i class="bi bi-stars"></i>Rapikan sekarang</button>
+        </div>
+        <div class="presets"><button>Natural</button><button class="on">Pop</button><button>Ballad</button><button>Rock</button><button>Dangdut</button></div>
+        <div class="scroll">
+          <div class="fx"><div class="row"><i class="f bi bi-wind"></i><div><b>Bersihkan desis</b><span>Hilangkan dengung dan desis latar</span></div><span class="sw"></span></div><input type="range" value="50" style="--v:50%"></div>
+          <div class="fx"><div class="row"><i class="f bi bi-arrows-collapse"></i><div><b>Penyeimbang suara</b><span>Suara pelan dan keras jadi stabil</span></div><span class="sw"></span></div><input type="range" value="40" style="--v:40%"></div>
+          <div class="fx"><div class="row"><i class="f bi bi-sliders2"></i><div><b>EQ vokal</b><span>Bass rapi, vokal lebih jernih</span></div><span class="sw"></span></div><input type="range" value="60" style="--v:60%"></div>
+          <div class="fx"><div class="row"><i class="f bi bi-soundwave"></i><div><b>Haluskan huruf "s"</b><span>Kurangi bunyi s dan sh yang tajam</span></div><span class="sw off"></span></div></div>
+          <div class="fx"><div class="row"><i class="f bi bi-broadcast"></i><div><b>Gema ruang</b><span>Kering sampai ruang konser</span></div><span class="sw"></span></div><input type="range" value="25" style="--v:25%"></div>
+          <div class="fx"><div class="row"><i class="f bi bi-volume-up"></i><div><b>Keraskan akhir</b><span>Setara lagu di Spotify, tanpa pecah</span></div><span class="sw"></span></div></div>
+          <div class="fx"><div class="row"><i class="f bi bi-music-note-beamed"></i><div><b>Nada lagu</b><span>Naik/turun bersama musik</span></div><b style="flex:none;color:var(--p)">0</b></div><input type="range" min="-4" max="4" value="0" style="--v:50%"></div>
+          <div class="fx lock"><div class="row"><i class="f bi bi-lock"></i><div><b>Koreksi nada vokal</b><span>Butuh rekaman vokal terpisah dari musik</span></div></div></div>
+        </div>
+        <div class="actions">
+          <button class="btn"><i class="bi bi-headphones"></i>Dengar hasil</button>
+          <button class="btn primary"><i class="bi bi-download"></i>Simpan hasil</button>
+        </div>
+      </div>
+
+      <div class="pane" id="analisa">
+        <div class="stats">
+          <div class="stat"><span class="label">Pecah</span><b>Tidak</b><em><i class="bi bi-check2"></i>Aman</em></div>
+          <div class="stat"><span class="label">Bagian senyap</span><b>3%</b><em><i class="bi bi-check2"></i>Normal</em></div>
+          <div class="stat"><span class="label">Bass</span><b>32%</b><em><i class="bi bi-check2"></i>Seimbang</em></div>
+          <div class="stat"><span class="label">Vokal jelas</span><b>21%</b><em><i class="bi bi-check2"></i>Jelas</em></div>
+        </div>
+        <div class="label" style="margin-top:14px">Keseimbangan nada</div>
+        <div class="bands">
+          <div class="band"><strong>5%</strong><div class="b" style="height:8%"></div><small>Getaran<br>&lt;80 Hz</small></div>
+          <div class="band"><strong>32%</strong><div class="b ok" style="height:50%"></div><small>Bass<br>80–300</small></div>
+          <div class="band"><strong>42%</strong><div class="b ok" style="height:66%"></div><small>Badan<br>300–1,2k</small></div>
+          <div class="band"><strong>21%</strong><div class="b ok" style="height:34%"></div><small>Jelas<br>1,2–5k</small></div>
+          <div class="band"><strong>0%</strong><div class="b" style="height:3%"></div><small>Udara<br>&gt;5k</small></div>
+        </div>
+        <div class="tip"><i class="bi bi-lightbulb-fill"></i><div><b>Rekaman sudah bagus.</b> Tidak ada yang perlu diubah di mixer.</div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Animasi mockup saja: meter, timer, gelombang contoh, tab, warna, dan mode.
+(function () {
+  // Untuk pratinjau: ?warna=ungu&mode=glass-light
+  var q = new URLSearchParams(location.search);
+  if (q.get('warna')) document.documentElement.setAttribute('data-warna', q.get('warna'));
+  if (q.get('mode')) document.documentElement.setAttribute('data-ol-skin', q.get('mode'));
+  document.querySelectorAll('#warna button').forEach(function (b) { b.classList.toggle('on', b.dataset.w === document.documentElement.getAttribute('data-warna')); });
+  document.querySelectorAll('#mode button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === document.documentElement.getAttribute('data-ol-skin')); });
+  var m = document.getElementById('meter'), seg = [];
+  for (var i = 0; i < 30; i++) { var s = document.createElement('i'); m.appendChild(s); seg.push(s); }
+  setInterval(function () {
+    var lv = 14 + Math.round(Math.random() * 9);
+    seg.forEach(function (s, i) { s.style.background = i < lv ? (i < 20 ? '#34d399' : i < 26 ? '#fbbf24' : '#ff4d5e') : ''; });
+  }, 120);
+  var t = 84; setInterval(function () { t++; document.getElementById('timer').textContent = String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }, 1000);
+
+  var c = document.getElementById('wave');
+  function gambar() {
+    var r = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight; c.width = w * r; c.height = h * r;
+    var g = c.getContext('2d'); g.scale(r, r);
+    var css = getComputedStyle(document.documentElement), p = css.getPropertyValue('--p').trim(), p2 = css.getPropertyValue('--p2').trim();
+    var grad = g.createLinearGradient(0, 0, w, 0); grad.addColorStop(0, p); grad.addColorStop(1, p2);
+    var n = Math.floor(w / 3), pos = 0.62;
+    for (var x = 0; x < n; x++) {
+      var a = 0.15 + Math.abs(Math.sin(x * 0.21) * Math.cos(x * 0.047)) * 0.75 + (x % 9 === 0 ? 0.1 : 0);
+      var bh = Math.min(1, a) * (h - 14);
+      g.fillStyle = x / n < pos ? grad : 'rgba(160,170,190,.45)';
+      g.fillRect(x * 3, (h - bh) / 2, 2, bh);
+    }
+    g.fillStyle = '#fbbf24'; g.fillRect(Math.round(w * pos), 0, 2, h);
+  }
+  gambar(); window.addEventListener('resize', gambar);
+
+  // Isi bagian slider yang sudah dilewati
+  document.querySelectorAll('input[type=range]').forEach(function (r) {
+    function isi() { r.style.setProperty('--v', ((r.value - r.min) / ((r.max || 100) - (r.min || 0)) * 100) + '%'); }
+    if (!r.min) r.min = 0; if (!r.max) r.max = 100; isi(); r.addEventListener('input', isi);
+  });
+  function grup(sel, fn) { document.querySelectorAll(sel).forEach(function (b) { b.onclick = function () {
+    document.querySelectorAll(sel).forEach(function (x) { x.classList.toggle('on', x === b); }); fn(b); }; }); }
+  grup('.tabs button', function (b) { document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.id === b.dataset.tab); }); });
+  grup('#warna button', function (b) { document.documentElement.setAttribute('data-warna', b.dataset.w); gambar(); });
+  grup('#mode button', function (b) { document.documentElement.setAttribute('data-ol-skin', b.dataset.m); });
+  grup('#ab button', function () {});
+  grup('.presets button', function () {});
+  document.querySelectorAll('.sw').forEach(function (s) { s.onclick = function () { s.classList.toggle('off'); }; });
+})();
+</script>
+</body>
+</html>
