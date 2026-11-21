@@ -1,102 +1,181 @@
-# Orulab Studio
+# Orulabs Studio Recording
 
-Aplikasi karaoke + rekam untuk laptop Windows. Cari lagu karaoke di YouTube, bernyanyi lewat mixer,
-rekam hasilnya, lalu rapikan dengan efek studio, semuanya dalam satu layar.
+Aplikasi perekaman vokal dan karaoke untuk laptop Windows. Cari dan putar lagu karaoke
+dari YouTube, bernyanyi lewat mixer (atau langsung dari laptop), rekam hasilnya, lalu
+rapikan dengan efek studio, semuanya dalam satu layar. Tersedia dalam Bahasa Indonesia
+dan English.
 
-![Orulab Studio, mode gelap](docs/screenshot-gelap.png)
+## Fitur Utama
 
-| Mode terang (warna Tosca) |
-|---|
-| ![Orulab Studio, mode terang](docs/screenshot-terang.png) |
-
-## Fitur
-
-- **YouTube di dalam aplikasi**: cari lagu karaoke (tanpa akun atau kunci API) lalu putar langsung.
-- **Perekam**: tombol rekam besar, timer, meter level hijau-kuning-merah, cek "Siap rekam", dan
-  volume input Windows yang bisa diatur dari aplikasi.
-- **Tersimpan otomatis** sebagai WAV di `Musik\Rekaman Karaoke` begitu tombol Stop ditekan.
-- **Rekaman saya**: daftar rekaman, putar ulang, ganti nama, buka folder, hapus (ke Recycle Bin).
+- **YouTube seperti aslinya**: video di kiri dan kolom **Berikutnya** di kanan, berisi saran
+  dari YouTube sendiri, dengan **Putar otomatis**. Cari lagu tanpa akun atau kunci API, dan
+  link video bisa langsung ditempel.
+- **Channel**: klik nama channel untuk melihat semua video dan playlist-nya, plus tombol **Putar semua**.
+- **Playlist saya**: tempel link channel YouTube Anda untuk mengambil semua playlist
+  Publik/Tidak publik, atau tempel link satu playlist. Saat diputar, kotak playlist muncul di
+  atas "Berikutnya", lengkap dengan Ulangi dan Acak.
+- **Perekam**: tombol rekam besar, timer, meter level hijau-kuning-merah, cek kesiapan, dan
+  volume input Windows langsung dari aplikasi.
+- **Keraskan otomatis saat merekam**: rekaman dinaikkan ke level yang pas dan dibatasi
+  supaya tidak pecah.
+- **Mode audio, sekali klik**:
+  - **Studio Rumah**: mixer + converter, suara keluar lewat Bluetooth mixer.
+  - **Laptop**: mic dan speaker laptop saja.
+  Mode ini mengatur perangkat rekam, speaker bawaan Windows (YouTube ikut pindah), dan volume
+  secara otomatis, dan langsung tersambung lagi setiap aplikasi dibuka.
+- **Rekaman saya**: tersimpan otomatis sebagai WAV, bisa diputar ulang, ganti nama, buka folder,
+  atau dihapus ke Recycle Bin.
 - **Gelombang suara**: klik untuk pindah posisi, seret pegangan kuning untuk memotong awal/akhir.
-- **Studio**: Bersihkan desis, Penyeimbang suara (kompresor), EQ vokal, Haluskan huruf "s",
-  Gema ruang, Keraskan akhir (setara lagu streaming tanpa pecah), dan Nada lagu (transpose).
-  Ada preset Natural, Pop, Ballad, Rock, Dangdut, serta tombol **Asli / Hasil studio** untuk membandingkan.
-- **Rapikan dengan Claude**: Claude membaca angka hasil analisa rekaman lalu memilih efek terbaik.
-  Yang dikirim hanya angka analisa, bukan suara. Tanpa kunci API, aplikasi memakai setelan otomatis.
-- **Analisa**: pecah atau tidak, bagian senyap, bass, kejelasan vokal, grafik keseimbangan nada,
-  dan saran setelan mixer.
-- **Tampilan glass** dari template Admin Panel Orulabs Limited Edition: 5 warna (Biru, Ungu, Tosca,
-  Senja, Mawar), mode gelap/terang, pas satu layar di 1920×1080 dan responsif di layar kecil.
+- **Studio**: Bersihkan desis, Penyeimbang suara, EQ vokal, Haluskan huruf "s", Gema ruang,
+  Keraskan akhir, dan Nada lagu. Ada preset Natural, Pop, Ballad, Rock, Dangdut, serta tombol
+  **Asli / Studio** untuk membandingkan.
+- **Rapikan otomatis**: setelah merekam, tombol **Rapikan otomatis** di atas gelombang menyala.
+  Sekali klik, aplikasi membaca hasil analisa lalu memilih dan menyetel efek studio sendiri.
+  Semuanya dikerjakan di laptop, tanpa internet dan tanpa API.
+- **Analisa**: pecah atau tidak, bagian senyap, bass, kejelasan vokal, grafik nada, dan saran setelan mixer.
+- **Pengaturan**: mode audio dan status perangkat, tes suara, keraskan otomatis, putar otomatis,
+  5 warna tema (Biru, Ungu, Tosca, Senja, Mawar), mode Gelap/Terang/Ikuti Windows, bahasa, folder
+  rekaman, dan versi aplikasi.
+- **Update otomatis**: aplikasi mengecek rilis baru di GitHub setiap dibuka. Bisa juga dicek manual
+  lewat tombol **Cek update** di Pengaturan, lalu **Update sekarang**: aplikasi memperbarui diri dan
+  terbuka lagi sendiri.
+- **Tampilan glass Orulabs**: pas satu layar di 1920×1080 dan responsif di layar kecil, dengan
+  logo dan kotak cari otomatis ke tengah.
 
-> Koreksi nada vokal (seperti autotune) belum bisa: musik dan vokal sudah tercampur di mixer,
-> jadi nada vokal tidak bisa diubah tanpa ikut mengubah musik.
+## Screenshot
 
-## Rangkaian
+| Tampilan utama (playlist + berikutnya) | Halaman channel |
+|---|---|
+| ![Tampilan utama](docs/screenshots/01-utama.png) | ![Channel](docs/screenshots/02-channel.png) |
+
+| Playlist saya | Pengaturan |
+|---|---|
+| ![Playlist saya](docs/screenshots/03-playlist-saya.png) | ![Pengaturan](docs/screenshots/04-pengaturan.png) |
+
+| English + mode terang | Layar kecil |
+|---|---|
+| ![English](docs/screenshots/05-english-terang.png) | ![Layar kecil](docs/screenshots/06-layar-kecil.png) |
+
+> Rekaman pada screenshot adalah contoh (suara sintetis), bukan rekaman sungguhan.
+
+## Rangkaian Studio Rumah
 
 ```
-Laptop (YouTube) ──Bluetooth──► Mixer Luxsona ◄── Mic Advance (CH2)
-                                   │        │
-                          MAIN OUT │        │ REC (RCA merah-putih)
-                                   ▼        ▼
-                           Speaker Polytron  Kabel RCA ke jack 3,5
-                                             ▼
-                                   Splitter headset (lubang MIC)
-                                             ▼
-                                  Converter 3,5 ke Type-C ► Laptop (Orulab Studio)
+Laptop (YouTube) ──Bluetooth──► Mixer ◄── Mic (CH2)
+                                 │     │
+                        MAIN OUT │     │ REC (RCA merah-putih)
+                                 ▼     ▼
+                            Speaker   Kabel RCA ke jack 3,5
+                                       ▼
+                             Splitter headset (lubang MIC)
+                                       ▼
+                       Converter 3,5 ke Type-C ► Laptop (Orulabs Studio Recording)
 ```
 
-- Bluetooth mixer disambungkan ke **laptop**, bukan ke HP. Tombol ST/MP3 di mixer pada posisi **MP3** (ditekan).
-- Kabel REC wajib lewat **splitter headset** (lubang mic). Tanpa splitter, converter dan lubang 3,5 laptop
-  tidak bisa membaca kabel stereo.
+- Tombol ST/MP3 di mixer pada posisi **MP3** (ditekan) supaya suara Bluetooth masuk.
+- Kabel REC wajib lewat **splitter headset** (lubang mic). Tanpa splitter, converter dan lubang
+  3,5 laptop tidak bisa membaca kabel stereo dari mixer.
 
-## Setelan yang dipakai
-
-| Bagian | Setelan |
+| Bagian | Setelan yang dipakai |
 |---|---|
 | Mixer CH2 (mic) | Gain 7, High +3 dB, Low −6 dB, HPF ditekan, Eff 3, Volume 7 |
 | Mixer 3/4 (musik) | Gain 4, High 0, Low +3 dB, Volume 4, ST/MP3 = MP3 |
 | Mixer master | Main 0 dB, Delay 3, Repeat 3, lampu CLIP jangan menyala |
-| Polytron | Volume sesuai selera, Bass +1, Middle +2, Treble +1, Super bass dan Surround OFF |
-| Laptop | Volume Windows (Bluetooth) 80%, YouTube 100%, Volume input converter 90% |
+| Speaker | Volume sesuai selera, Bass +1, Middle +2, Treble +1, Super bass dan Surround OFF |
+| Laptop | Volume input converter 90% (diatur otomatis oleh mode Studio Rumah) |
 
-## Cara pakai
+## Teknologi
 
-1. Ekstrak `Orulab-Studio.zip`, lalu jalankan **`Orulab Studio.exe`**. Aplikasi terbuka sebagai jendela
-   Chrome (memakai profil Chrome Anda, jadi tidak perlu login YouTube lagi).
-2. Pertama kali: klik **Izinkan** saat Chrome meminta akses mikrofon.
-3. Cek "Rekam dari" = **Microphone (YA USB Audio)** (converter) dan status **Siap rekam** hijau.
-4. Cari lagu, putar, bernyanyi, tekan tombol **merah** untuk merekam, tekan lagi untuk selesai.
-5. Buka tab **Studio**, tekan **Rapikan sekarang**, dengarkan dengan **Dengar hasil**, lalu **Simpan hasil**.
+- **Server lokal C# (.NET Framework 4.8)** di `localhost:47821`. Di-compile dengan compiler bawaan
+  Windows, tanpa Visual Studio. Tugasnya: file rekaman, pencarian YouTube, volume input, dan
+  perangkat audio bawaan (Windows Core Audio).
+- **Tampilan HTML/CSS/JavaScript** dibuka sebagai jendela aplikasi Chrome. Perekaman memakai
+  Web Audio API (AudioWorklet), efek studio memakai OfflineAudioContext + DSP sendiri, dan video
+  memakai pemutar resmi YouTube (IFrame Player API).
+- **Inno Setup 6** untuk installer per user (tanpa hak admin).
+- Font [Inter](https://rsms.me/inter/) dan [Bootstrap Icons](https://icons.getbootstrap.com/),
+  disimpan lokal di `web/vendor/`. Tema diadaptasi dari Admin Panel Orulabs Limited Edition (skin glass).
 
-Kunci API Claude (opsional) diatur lewat **Atur kunci API Claude**. Kunci disimpan terenkripsi dengan
-akun Windows (DPAPI) di `%APPDATA%\OrulabStudio`.
+---
+
+## Instalasi (pengguna)
+
+1. Unduh `Orulabs-Studio-Recording-Setup-<versi>.exe` dari halaman
+   [Releases](https://github.com/r0corp/Orulabs_Studio_Recording/releases/latest), lalu jalankan.
+   - Tidak perlu hak admin. Aplikasi dipasang per user di `%LOCALAPPDATA%\Programs\Orulabs Studio Recording`.
+   - Shortcut dibuat di Start Menu dan Desktop.
+2. Buka **Orulabs Studio Recording**. Aplikasi terbuka sebagai jendela Chrome memakai profil Chrome
+   Anda, jadi tidak perlu login YouTube lagi.
+3. Pertama kali: klik **Izinkan** saat Chrome meminta akses mikrofon.
+4. Buka **Pengaturan → Mode audio**, cek perangkat tiap mode, lalu tekan **Aktifkan** dan **Tes suara**.
+
+Setelah terpasang, update berikutnya datang sendiri. Lihat **Pengaturan → Cek update**.
+
+Data aplikasi:
+
+| Data | Lokasi |
+|---|---|
+| Rekaman (WAV) | `Musik\Rekaman Karaoke` |
+| Pengaturan, Playlist saya | `%APPDATA%\OrulabStudio\` |
 
 ## Build dari kode sumber
 
-Tidak perlu Visual Studio. Compiler C# bawaan Windows (.NET Framework 4) sudah cukup.
+### 1. Prasyarat
+
+- Windows 10/11 dengan .NET Framework 4.8 (sudah bawaan Windows).
+- Google Chrome (atau Microsoft Edge).
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php), untuk membuat installer.
+
+### 2. Clone repository
+
+```bash
+git clone https://github.com/r0corp/Orulabs_Studio_Recording.git
+cd Orulabs_Studio_Recording
+```
+
+### 3. Build
 
 ```powershell
 .\build.ps1
 ```
 
-Hasilnya `dist\Orulab Studio\` (exe + folder `web`) dan `dist\Orulab-Studio.zip`.
-Library Claude sudah dibundel di `web\vendor\claude.js`. Untuk membundel ulang (butuh Node.js):
+Hasilnya ada di `dist\`:
+
+- `Orulabs Studio Recording\`: exe + folder `web`
+- `Orulabs-Studio-Recording.zip`: dipakai update otomatis
+- `Orulabs-Studio-Recording-Setup-<versi>.exe`: installer
+
+Untuk sekalian memasang atau memperbarui aplikasi di laptop ini:
 
 ```powershell
-.\build.ps1 -BundelClaude
+.\build.ps1 -Pasang
 ```
+
+### 4. Rilis
+
+1. Naikkan `Versi` di `src/Server.cs`.
+2. Jalankan `.\build.ps1`.
+3. Buat rilis GitHub dengan tag `v<versi>`, lalu lampirkan `Orulabs-Studio-Recording.zip` dan
+   `Orulabs-Studio-Recording-Setup-<versi>.exe`. Aplikasi yang sudah terpasang memakai file
+   `.zip` untuk update otomatis.
 
 ## Struktur
 
-| Folder | Isi |
+| Folder / file | Isi |
 |---|---|
-| `src/` | Server lokal C# (`localhost:47821`): file, rekaman, pencarian YouTube, volume input, pengaturan |
-| `web/` | Tampilan: `index.html`, `app.css`, `app.js` (logika), `dsp.js` (analisa dan efek studio) |
-| `web-src/` | Sumber modul Claude (`@anthropic-ai/sdk`) yang dibundel jadi `web/vendor/claude.js` |
+| `src/Server.cs` | Server lokal: rute API, YouTube (cari, berikutnya, channel, playlist), file rekaman, pengaturan |
+| `src/Audio.cs` | Volume input dan perangkat audio bawaan Windows (Core Audio) |
+| `src/Updater.cs` | Update otomatis dari GitHub Releases |
+| `installer.iss` | Installer Inno Setup |
+| `web/index.html`, `web/app.css` | Tampilan |
+| `web/app.js` | Logika: YouTube, perekam, rekaman, studio, analisa, mode audio, pengaturan |
+| `web/dsp.js` | Analisa rekaman, efek studio, WAV |
+| `web/i18n.js` | Kamus Bahasa Indonesia dan English |
 | `docs/` | Screenshot dan mockup desain |
 
-## Pihak ketiga
+## Catatan
 
-- [Bootstrap Icons](https://icons.getbootstrap.com/) (MIT) dan font [Inter](https://rsms.me/inter/) (SIL OFL 1.1), lisensi di `web/vendor/`.
-- [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) (MIT), dibundel di `web/vendor/claude.js`.
-- Video diputar dengan pemutar resmi YouTube (IFrame Player API).
-- Logo dan template tampilan: Orulabs.
+- Playlist YouTube **Pribadi**, "Tonton nanti", "Video yang disukai", dan riwayat tonton tidak bisa
+  dibaca tanpa login Google. Ubah playlist ke **Tidak publik** supaya tetap tersembunyi tapi bisa dibuka.
+- Saran "Berikutnya" diambil tanpa login, jadi tidak dipersonalisasi ke akun Anda.
+- Koreksi nada vokal (autotune) belum bisa: musik dan vokal sudah tercampur di mixer.

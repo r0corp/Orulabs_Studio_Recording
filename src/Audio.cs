@@ -7,12 +7,76 @@ using System.Runtime.InteropServices;
 namespace OrulabStudio
 {
     [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    interface IMMDeviceEnumerator { int EnumAudioEndpoints(int flow, int mask, out IMMDeviceCollection c); }
+    interface IMMDeviceEnumerator { int EnumAudioEndpoints(int flow, int mask, out IMMDeviceCollection c);
+        int GetDefaultAudioEndpoint(int flow, int role, out IMMDevice d); }
     [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IMMDeviceCollection { int GetCount(out int n); int Item(int i, out IMMDevice d); }
     [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IMMDevice { int Activate(ref Guid iid, int ctx, IntPtr p, [MarshalAs(UnmanagedType.IUnknown)] out object o);
-        int OpenPropertyStore(int access, out IPropertyStore ps); }
+        int OpenPropertyStore(int access, out IPropertyStore ps); int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id); }
+
+    // Antarmuka Windows (tidak terdokumentasi resmi, dipakai luas) untuk mengganti perangkat audio bawaan.
+    [Guid("f8679f50-850a-41cf-9c72-430f290290c8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IPolicyConfig
+    {
+        int GetMixFormat(); int GetDeviceFormat(); int ResetDeviceFormat(); int SetDeviceFormat();
+        int GetProcessingPeriod(); int SetProcessingPeriod(); int GetShareMode(); int SetShareMode();
+        int GetPropertyValue(); int SetPropertyValue();
+        int SetDefaultEndpoint([MarshalAs(UnmanagedType.LPWStr)] string id, int role);
+        int SetEndpointVisibility();
+    }
+    [ComImport, Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")] class PolicyConfigClient { }
+
+    /// <summary>Daftar perangkat dan perangkat bawaan Windows (arah 0 = output/speaker, 1 = input/mic).</summary>
+    static class PerangkatAudio
+    {
+        public static List<string> Daftar(int arah)
+        {
+            var r = new List<string>();
+            try
+            {
+                var en = (IMMDeviceEnumerator)new MMDeviceEnumeratorCo();
+                IMMDeviceCollection col; en.EnumAudioEndpoints(arah, 1, out col);
+                int n; col.GetCount(out n);
+                for (int i = 0; i < n; i++) { IMMDevice d; col.Item(i, out d); r.Add(VolumeInput.NamaPerangkat(d)); }
+            }
+            catch { }
+            return r;
+        }
+
+        public static string Bawaan(int arah)
+        {
+            try
+            {
+                var en = (IMMDeviceEnumerator)new MMDeviceEnumeratorCo();
+                IMMDevice d; if (en.GetDefaultAudioEndpoint(arah, 0, out d) != 0 || d == null) return "";
+                return VolumeInput.NamaPerangkat(d);
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>Jadikan perangkat ini bawaan Windows (semua peran). Benar bila berhasil.</summary>
+        public static bool AturBawaan(int arah, string nama)
+        {
+            try
+            {
+                var en = (IMMDeviceEnumerator)new MMDeviceEnumeratorCo();
+                IMMDeviceCollection col; en.EnumAudioEndpoints(arah, 1, out col);
+                int n; col.GetCount(out n);
+                for (int i = 0; i < n; i++)
+                {
+                    IMMDevice d; col.Item(i, out d);
+                    if (!string.Equals(VolumeInput.NamaPerangkat(d), nama, StringComparison.OrdinalIgnoreCase)) continue;
+                    string id; d.GetId(out id);
+                    var pc = (IPolicyConfig)new PolicyConfigClient();
+                    for (int peran = 0; peran < 3; peran++) pc.SetDefaultEndpoint(id, peran);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+    }
     [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IPropertyStore { int GetCount(out int n); int GetAt(int i, out PROPERTYKEY k); int GetValue(ref PROPERTYKEY k, out PROPVARIANT v); }
     [StructLayout(LayoutKind.Sequential)] struct PROPERTYKEY { public Guid fmtid; public int pid; }
@@ -42,6 +106,8 @@ namespace OrulabStudio
             catch { }
             return r;
         }
+
+        public static string NamaPerangkat(IMMDevice d) { return Nama(d); }
 
         static string Nama(IMMDevice d)
         {

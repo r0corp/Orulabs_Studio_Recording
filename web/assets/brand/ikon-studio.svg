@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Ikon Orulabs Studio Recording: mikrofon warna Orulabs (biru muda, biru, oranye) di latar putih -->
+  <defs>
+    <linearGradient id="latar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef6fd"/>
+    </linearGradient>
+    <linearGradient id="mic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#29c5f6"/>
+      <stop offset="1" stop-color="#0d8ef0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#latar)"/>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="27.5" fill="none" stroke="#0d8ef0" stroke-opacity=".18"/>
+  <!-- badan mic -->
+  <rect x="48" y="20" width="32" height="54" rx="16" fill="url(#mic)"/>
+  <path d="M53 36h22M53 46h22M53 56h22" stroke="#ffffff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+  <!-- penyangga -->
+  <path d="M36 58a28 28 0 0 0 56 0" fill="none" stroke="#16325c" stroke-width="6" stroke-linecap="round"/>
+  <path d="M64 86v14M50 104h28" stroke="#16325c" stroke-width="6" stroke-linecap="round"/>
+  <!-- gelombang suara oranye -->
+  <path d="M22 54v12M30 46v28M98 46v28M106 54v12" stroke="#f47b20" stroke-width="5.5" stroke-linecap="round"/>
+</svg>

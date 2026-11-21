@@ -1,4 +1,4 @@
-// Orulab Studio: server lokal kecil yang melayani tampilan (folder "web") di
+// Orulabs Studio Recording: server lokal kecil yang melayani tampilan (folder "web") di
 // http://localhost:47821 lalu membukanya sebagai jendela aplikasi Chrome.
 // Merekam, efek studio, dan analisa dikerjakan di tampilan (browser);
 // server menangani file rekaman, pencarian YouTube, volume input, dan pengaturan.
@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,6 +16,8 @@ namespace OrulabStudio
     static class Program
     {
         public const int Port = 47821;
+        /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
+        public const string Versi = "1.1.0";
         public static readonly string Alamat = "http://localhost:" + Port + "/";
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -37,7 +38,7 @@ namespace OrulabStudio
             folderWeb = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
             if (!Directory.Exists(folderWeb))
             {
-                Pesan("Folder \"web\" tidak ditemukan di samping Orulab Studio.exe.\n\nEkstrak ulang seluruh isi zip lalu jalankan lagi.");
+                Pesan("Folder \"web\" tidak ditemukan di samping Orulabs Studio Recording.exe.\n\nEkstrak ulang seluruh isi zip lalu jalankan lagi.");
                 return 1;
             }
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)12288; // TLS 1.2 + 1.3
@@ -47,13 +48,16 @@ namespace OrulabStudio
             try { listener.Start(); }
             catch (HttpListenerException)
             {
-                // Sudah ada Orulab Studio yang berjalan: cukup buka jendelanya lagi.
+                // Sudah ada Orulabs Studio Recording yang berjalan: cukup buka jendelanya lagi.
                 BukaJendela();
                 return 0;
             }
 
             bool tanpaJendela = Array.IndexOf(args, "--tanpa-jendela") >= 0;
-            if (!tanpaJendela) BukaJendela();
+            // Setelah update, jendela lama memuat ulang dirinya sendiri, jadi tidak perlu membuka jendela baru.
+            bool setelahUpdate = Array.IndexOf(args, "--setelah-update") >= 0;
+            if (!tanpaJendela && !setelahUpdate) BukaJendela();
+            Pembaruan.BersihkanSisa();
 
             // Server berhenti sendiri bila jendela aplikasi sudah lama ditutup (tidak ada ping).
             var penjaga = new Thread(() =>
@@ -77,7 +81,7 @@ namespace OrulabStudio
 
         static void Pesan(string teks)
         {
-            try { System.Windows.Forms.MessageBox.Show(teks, "Orulab Studio"); } catch { }
+            try { System.Windows.Forms.MessageBox.Show(teks, "Orulabs Studio Recording"); } catch { }
         }
 
         /// <summary>Buka tampilan sebagai jendela aplikasi Chrome (profil pengguna, jadi akun YouTube ikut terpakai).</summary>
@@ -211,21 +215,63 @@ namespace OrulabStudio
                     KirimJson(res, 200, teks); return;
                 }
 
-                case "kunci-claude":
+                case "playlist-yt":
+                    KirimJson(res, 200, PlaylistYouTube(q["link"] ?? "")); return;
+
+                case "terkait":
+                    KirimJson(res, 200, Terkait(q["id"])); return;
+
+                case "channel":
+                    KirimJson(res, 200, Channel(q["url"], q["tab"])); return;
+
+                case "perpustakaan":
                 {
-                    // Kunci API disimpan terenkripsi dengan akun Windows (DPAPI).
-                    string f = Path.Combine(FolderData, "kunci-claude.bin");
+                    // Riwayat lagu dan "Playlist saya", disimpan sebagai satu file JSON.
+                    string f = Path.Combine(FolderData, "perpustakaan.json");
                     if (req.HttpMethod == "POST")
                     {
-                        string kunci = BacaBody(req).Trim();
+                        string isi = BacaBody(req);
                         Directory.CreateDirectory(FolderData);
-                        if (kunci.Length == 0) { if (File.Exists(f)) File.Delete(f); }
-                        else File.WriteAllBytes(f, ProtectedData.Protect(Encoding.UTF8.GetBytes(kunci), null, DataProtectionScope.CurrentUser));
+                        lock (kunciFile) File.WriteAllText(f, isi, Encoding.UTF8);
                         KirimJson(res, 200, "{\"ok\":true}"); return;
                     }
-                    string hasil = "";
-                    try { if (File.Exists(f)) hasil = Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(f), null, DataProtectionScope.CurrentUser)); } catch { }
-                    KirimJson(res, 200, "{\"kunci\":" + J(hasil) + "}"); return;
+                    string teks;
+                    lock (kunciFile) teks = File.Exists(f) ? File.ReadAllText(f, Encoding.UTF8) : "{\"riwayat\":[],\"playlist\":[]}";
+                    KirimJson(res, 200, teks); return;
+                }
+
+                case "audio":
+                {
+                    // Daftar perangkat + bawaan Windows; POST untuk mengganti bawaan (dipakai mode audio).
+                    if (req.HttpMethod == "POST")
+                    {
+                        int arah = q["arah"] == "input" ? 1 : 0;
+                        bool ok = PerangkatAudio.AturBawaan(arah, q["nama"] ?? "");
+                        KirimJson(res, 200, "{\"ok\":" + (ok ? "true" : "false") + "}"); return;
+                    }
+                    KirimJson(res, 200, "{\"output\":[" + string.Join(",", PerangkatAudio.Daftar(0).ConvertAll(J).ToArray()) + "],\"input\":["
+                        + string.Join(",", PerangkatAudio.Daftar(1).ConvertAll(J).ToArray()) + "],\"bawaanOutput\":" + J(PerangkatAudio.Bawaan(0))
+                        + ",\"bawaanInput\":" + J(PerangkatAudio.Bawaan(1)) + "}");
+                    return;
+                }
+
+                case "versi":
+                    KirimJson(res, 200, "{\"versi\":" + J(Versi) + "}"); return;
+
+                case "update/cek":
+                    KirimJson(res, 200, Pembaruan.Cek()); return;
+
+                case "update/pasang":
+                {
+                    if (req.HttpMethod != "POST") { Kirim(res, 405, "text/plain", "POST"); return; }
+                    string hasil = Pembaruan.Siapkan();
+                    KirimJson(res, 200, hasil);
+                    if (hasil.Contains("\"ok\":true"))
+                    {
+                        // Tutup server sebentar lagi; skrip pembaruan menyalin file lalu menyalakan aplikasi kembali.
+                        new Thread(() => { Thread.Sleep(800); Environment.Exit(0); }) { IsBackground = true }.Start();
+                    }
+                    return;
                 }
 
                 case "info":
@@ -359,56 +405,168 @@ namespace OrulabStudio
             return 0;
         }
 
-        // ================= Pencarian YouTube =================
-        /// <summary>Cari video di halaman hasil YouTube (tanpa kunci API) lalu kembalikan JSON daftar video.</summary>
+        // ================= YouTube (tanpa login, tanpa kunci API) =================
+        // Semua halaman YouTube (cari, playlist, tonton, channel) memakai format item yang sama
+        // ("lockupViewModel"); format lama ("videoRenderer", "playlistVideoRenderer") tetap dibaca.
+
+        const string UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
+
+        static string UnduhYouTube(string url)
+        {
+            for (int coba = 0; ; coba++)
+            {
+                try
+                {
+                    using (var wc = new WebClient())
+                    {
+                        wc.Encoding = Encoding.UTF8;
+                        wc.Headers[HttpRequestHeader.UserAgent] = UA;
+                        wc.Headers[HttpRequestHeader.AcceptLanguage] = "id-ID,id;q=0.9,en;q=0.8";
+                        return wc.DownloadString(url);
+                    }
+                }
+                catch (WebException) { if (coba >= 1) throw; Thread.Sleep(400); }
+            }
+        }
+
+        const string TEKS = "((?:[^\"\\\\]|\\\\.)*)";
+
+        /// <summary>Satu item YouTube (video atau playlist) sebagai JSON.</summary>
+        static string Item(string jenis, string id, string judul, string channel, string url, string durasi)
+        {
+            return "{\"jenis\":" + J(jenis) + ",\"id\":" + J(id) + ",\"judul\":" + J(UnescapeJson(judul ?? "")) + ",\"channel\":" + J(UnescapeJson(channel ?? ""))
+                + ",\"url\":" + J(url ?? "") + ",\"durasi\":" + J(durasi ?? "") + "}";
+        }
+
+        /// <summary>Ambil daftar video/playlist dari halaman YouTube. jenisDiminta: "video", "playlist", atau null (semua).</summary>
+        static List<string> AmbilItem(string html, string jenisDiminta, int maks, string kecuali = null)
+        {
+            var hasil = new List<string>(); var sudah = new HashSet<string>();
+            if (kecuali != null) sudah.Add(kecuali);
+
+            // Format baru
+            var potong = html.Split(new[] { "{\"lockupViewModel\":{" }, StringSplitOptions.None);
+            for (int i = 1; i < potong.Length && hasil.Count < maks; i++)
+            {
+                string bag = potong[i].Length > 20000 ? potong[i].Substring(0, 20000) : potong[i];
+                string tipe = Ambil(bag, "\"contentType\":\"LOCKUP_CONTENT_TYPE_([A-Z_]+)\"") ?? "VIDEO";
+                string jenis = tipe == "PLAYLIST" || tipe == "PODCAST" ? "playlist" : tipe == "VIDEO" ? "video" : null;
+                if (jenis == null || (jenisDiminta != null && jenis != jenisDiminta)) continue;
+                string judul = Ambil(bag, "\"lockupMetadataViewModel\":\\{\"title\":\\{\"content\":\"" + TEKS + "\"");
+                string id = Ambil(bag, "\"contentId\":\"([A-Za-z0-9_-]+)\"");
+                if (jenis == "video" && (id == null || id.Length != 11)) id = Ambil(bag, @"i\.ytimg\.com/vi/([A-Za-z0-9_-]{11})/");
+                if (id == null || judul == null || !sudah.Add(id)) continue;
+                string channel = Ambil(bag, "\"metadataParts\":\\[\\{\"text\":\\{\"content\":\"" + TEKS + "\"");
+                string url = Ambil(bag, "\"url\":\"(/@[^\"/?]+|/channel/[^\"/?]+)\"");
+                string durasi = jenis == "video"
+                    ? Ambil(bag, "\"thumbnailBadgeViewModel\":\\{.*?\"text\":\"([0-9]+[:.][0-9:.]+)\"")
+                    : Ambil(bag, "\"thumbnailBadgeViewModel\":\\{.*?\"text\":\"([^\"]*)\"");
+                hasil.Add(Item(jenis, id, judul, channel, url, durasi));
+            }
+
+            // Format lama: hasil cari dan isi playlist
+            foreach (var pemisah in new[] { "\"videoRenderer\":{\"videoId\":\"", "\"playlistVideoRenderer\":{\"videoId\":\"" })
+            {
+                if (jenisDiminta == "playlist") break;
+                var bagian = html.Split(new[] { pemisah }, StringSplitOptions.None);
+                for (int i = 1; i < bagian.Length && hasil.Count < maks; i++)
+                {
+                    string bag = bagian[i].Length > 8000 ? bagian[i].Substring(0, 8000) : bagian[i];
+                    if (bag.IndexOf('"') != 11) continue;
+                    string id = bag.Substring(0, 11);
+                    string judul = Ambil(bag, "\"title\":\\{\"runs\":\\[\\{\"text\":\"" + TEKS + "\"");
+                    if (judul == null || !sudah.Add(id)) continue;
+                    string channel = Ambil(bag, "\"(?:ownerText|shortBylineText)\":\\{\"runs\":\\[\\{\"text\":\"" + TEKS + "\"");
+                    string url = Ambil(bag, "\"canonicalBaseUrl\":\"([^\"]+)\"");
+                    string durasi = Ambil(bag, "\"lengthText\":\\{[^}]*?\\}\\},\"simpleText\":\"([^\"]*)\"") ?? Ambil(bag, "\"lengthText\":\\{\"simpleText\":\"([^\"]*)\"");
+                    hasil.Add(Item("video", id, judul, channel, url, durasi));
+                }
+            }
+            return hasil;
+        }
+
+        static string Daftar(List<string> item) { return "[" + string.Join(",", item.ToArray()) + "]"; }
+
         static string CariYouTube(string kata)
         {
             if (kata.Trim().Length == 0) return "[]";
-            // YouTube kadang mengirim halaman berbeda; coba sekali lagi bila hasilnya kosong.
+            // Link video yang ditempel langsung: putar video itu.
+            var v = Regex.Match(kata, @"(?:v=|youtu\.be/|shorts/)([A-Za-z0-9_-]{11})");
+            if (v.Success) return "[" + Item("video", v.Groups[1].Value, "Video dari link", "", "", "") + "]";
+            // YouTube kadang mengirim halaman berbeda; coba lagi bila kosong.
             for (int coba = 0; coba < 3; coba++)
             {
-                string hasil = CariYouTubeSekali(kata);
-                if (hasil != "[]") return hasil;
+                var item = AmbilItem(UnduhYouTube("https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query=" + Uri.EscapeDataString(kata)), "video", 30);
+                if (item.Count > 0) return Daftar(item);
                 Thread.Sleep(400);
             }
             return "[]";
         }
 
-        static string CariYouTubeSekali(string kata)
+        /// <summary>Lagu berikutnya (saran YouTube) dan channel pemilik video.</summary>
+        static string Terkait(string id)
         {
+            if (!Regex.IsMatch(id ?? "", "^[A-Za-z0-9_-]{11}$")) return "{\"galat\":\"ID video tidak valid\"}";
+            string html = UnduhYouTube("https://www.youtube.com/watch?v=" + id);
+            int sek = html.IndexOf("\"secondaryResults\":{");
+            string bagian = sek >= 0 ? html.Substring(sek) : html;
+            var item = AmbilItem(bagian, "video", 25, id);
+            string pemilik = null, urlPemilik = null;
+            int o = html.IndexOf("\"videoOwnerRenderer\":{");
+            if (o >= 0)
+            {
+                string b = html.Substring(o, Math.Min(4000, html.Length - o));
+                pemilik = Ambil(b, "\"title\":\\{\"runs\":\\[\\{\"text\":\"" + TEKS + "\"");
+                urlPemilik = Ambil(b, "\"canonicalBaseUrl\":\"([^\"]+)\"");
+            }
+            string judul = Ambil(html, "<meta name=\"title\" content=\"([^\"]*)\"");
+            return "{\"judul\":" + J(WebUtility.HtmlDecode(judul ?? "")) + ",\"channel\":" + J(UnescapeJson(pemilik ?? "")) + ",\"url\":" + J(urlPemilik ?? "")
+                + ",\"video\":" + Daftar(item) + "}";
+        }
+
+        /// <summary>Halaman channel: tab "videos" atau "playlists".</summary>
+        static string Channel(string alamat, string tab)
+        {
+            alamat = (alamat ?? "").Trim();
+            var m = Regex.Match(alamat, @"(/@[^/?#\s]+|/channel/[^/?#\s]+|/c/[^/?#\s]+|/user/[^/?#\s]+)");
+            string path;
+            if (m.Success) path = m.Groups[1].Value;
+            else
+            {
+                var at = Regex.Match(alamat, @"^@?([A-Za-z0-9._-]+)$");
+                if (!at.Success) return "{\"galat\":\"Link channel tidak dikenali. Contoh: https://www.youtube.com/@namachannel\"}";
+                path = "/@" + at.Groups[1].Value;
+            }
+            string jenis = tab == "playlists" ? "playlist" : "video";
             string html;
-            using (var wc = new WebClient())
-            {
-                wc.Encoding = Encoding.UTF8;
-                wc.Headers[HttpRequestHeader.UserAgent] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
-                wc.Headers[HttpRequestHeader.AcceptLanguage] = "id-ID,id;q=0.9,en;q=0.8";
-                // sp=EgIQAQ%3D%3D = hanya video
-                html = wc.DownloadString("https://www.youtube.com/results?sp=EgIQAQ%3D%3D&search_query=" + Uri.EscapeDataString(kata));
-            }
-            var hasil = new StringBuilder("["); var sudah = new HashSet<string>(); int jumlah = 0;
-            var potong = html.Split(new[] { "\"videoRenderer\":{\"videoId\":\"" }, StringSplitOptions.None);
-            for (int i = 1; i < potong.Length && jumlah < 16; i++)
-            {
-                string bag = potong[i].Length > 8000 ? potong[i].Substring(0, 8000) : potong[i];
-                int kutip = bag.IndexOf('"'); if (kutip != 11) continue;
-                string id = bag.Substring(0, 11);
-                if (!sudah.Add(id)) continue;
-                string judul = Ambil(bag, "\"title\":\\{\"runs\":\\[\\{\"text\":\"((?:[^\"\\\\]|\\\\.)*)\"");
-                if (judul == null) continue;
-                string channel = Ambil(bag, "\"ownerText\":\\{\"runs\":\\[\\{\"text\":\"((?:[^\"\\\\]|\\\\.)*)\"") ?? "";
-                string durasi = Ambil(bag, "\"lengthText\":\\{[^}]*?\\}\\},\"simpleText\":\"([^\"]*)\"")
-                             ?? Ambil(bag, "\"lengthText\":\\{\"simpleText\":\"([^\"]*)\"") ?? "";
-                if (jumlah > 0) hasil.Append(',');
-                hasil.Append("{\"id\":").Append(J(id)).Append(",\"judul\":").Append(J(UnescapeJson(judul)))
-                     .Append(",\"channel\":").Append(J(UnescapeJson(channel))).Append(",\"durasi\":").Append(J(durasi)).Append('}');
-                jumlah++;
-            }
-            return hasil.Append(']').ToString();
+            try { html = UnduhYouTube("https://www.youtube.com" + path + "/" + (jenis == "playlist" ? "playlists" : "videos")); }
+            catch (WebException) { return "{\"galat\":\"Channel tidak ditemukan.\"}"; }
+            string nama = WebUtility.HtmlDecode(Ambil(html, "<meta property=\"og:title\" content=\"([^\"]*)\"") ?? "");
+            string foto = Ambil(html, "<meta property=\"og:image\" content=\"([^\"]*)\"") ?? "";
+            return "{\"nama\":" + J(nama) + ",\"foto\":" + J(foto) + ",\"url\":" + J(path) + ",\"item\":" + Daftar(AmbilItem(html, jenis, 60)) + "}";
+        }
+
+        /// <summary>Isi playlist YouTube publik/unlisted dari link (playlist pribadi butuh login Google).</summary>
+        static string PlaylistYouTube(string link)
+        {
+            link = (link ?? "").Trim();
+            var m = Regex.Match(link, @"[?&]list=([A-Za-z0-9_-]+)");
+            string id = m.Success ? m.Groups[1].Value : (Regex.IsMatch(link, @"^[A-Za-z0-9_-]{12,}$") ? link : null);
+            if (id == null) return "{\"galat\":\"Link playlist tidak dikenali. Salin link yang berisi 'list=...'.\"}";
+            if (id == "WL" || id == "LL" || id.StartsWith("LM"))
+                return "{\"galat\":\"Tonton nanti dan Video yang disukai bersifat pribadi, tidak bisa dibuka tanpa login Google.\"}";
+            string html;
+            try { html = UnduhYouTube("https://www.youtube.com/playlist?list=" + Uri.EscapeDataString(id)); }
+            catch (WebException) { return "{\"galat\":\"Playlist tidak ditemukan atau bersifat pribadi.\"}"; }
+            var item = AmbilItem(html, "video", 200);
+            if (item.Count == 0) return "{\"galat\":\"Playlist kosong atau bersifat pribadi. Ubah ke Publik/Tidak publik di YouTube lalu coba lagi.\"}";
+            string judul = Ambil(html, "<meta property=\"og:title\" content=\"([^\"]*)\"");
+            return "{\"judul\":" + J(WebUtility.HtmlDecode(judul ?? "Playlist YouTube")) + ",\"id\":" + J(id) + ",\"video\":" + Daftar(item) + "}";
         }
 
         static string Ambil(string teks, string pola)
         {
-            var m = Regex.Match(teks, pola);
+            var m = Regex.Match(teks, pola, RegexOptions.Singleline);
             return m.Success ? m.Groups[1].Value : null;
         }
 

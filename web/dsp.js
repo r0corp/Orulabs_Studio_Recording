@@ -248,9 +248,9 @@ function geserNada(x, semitone) {
 }
 
 /** Keraskan setara lagu streaming lalu batasi puncak di -1 dB (limiter dengan lookahead). */
-function keraskan(x, rate) {
+function keraskan(x, rate, targetDb = -15) {
   let jum = 0; for (let i = 0; i < x.length; i++) jum += x[i] * x[i];
-  const rms = Math.sqrt(jum / Math.max(1, x.length)), naik = rms > 0 ? Math.min(8, Math.pow(10, -15 / 20) / rms) : 1;
+  const rms = Math.sqrt(jum / Math.max(1, x.length)), naik = rms > 0 ? Math.min(8, Math.pow(10, targetDb / 20) / rms) : 1;
   const batas = Math.pow(10, -1 / 20), maju = Math.floor(rate * 0.005), lepas = Math.exp(-1 / (rate * 0.08));
   const out = new Float32Array(x.length);
   let g = 1;
@@ -263,6 +263,9 @@ function keraskan(x, rate) {
   }
   return out;
 }
+
+/** Keraskan rekaman mentah ke level pas (rata-rata -18 dB) tanpa pecah. Dipakai "Keraskan otomatis saat merekam". */
+export function keraskanRekaman(x, rate) { return keraskan(x, rate, -18); }
 
 /** Pastikan tidak ada yang melewati batas (dipakai bila "Keraskan akhir" mati). */
 function amankan(x) {

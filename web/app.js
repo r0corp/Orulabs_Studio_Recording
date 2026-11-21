@@ -1,6 +1,7 @@
-// Orulab Studio: logika tampilan.
-// YouTube (pemutar resmi) + perekam + daftar rekaman + gelombang + studio + analisa.
+// Orulabs Studio Recording: logika tampilan.
+// YouTube (pemutar resmi, kolom seperti YouTube asli) + perekam + rekaman + studio + analisa + pengaturan.
 import * as dsp from "./dsp.js";
+import { t, aturBahasa, terapkan } from "./i18n.js";
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -10,44 +11,43 @@ const html = document.documentElement;
 async function api(rute, opsi = {}) {
   const r = await fetch("/api/" + rute, { ...opsi, headers: { "X-Orulab": "1", ...(opsi.headers || {}) } });
   if (!r.ok) {
-    let pesan = "Server menolak (" + r.status + ")";
+    let pesan = "HTTP " + r.status;
     try { const j = await r.json(); if (j.galat) pesan = j.galat; } catch {}
     throw new Error(pesan);
   }
   return r;
 }
-const apiJson = async (rute, opsi) => (await api(rute, opsi)).json();
+async function apiJson(rute, opsi) {
+  const j = await (await api(rute, opsi)).json();
+  if (j && j.galat) throw new Error(j.galat);
+  return j;
+}
 const q = (o) => new URLSearchParams(o).toString();
-
-function waktu(detik) {
-  detik = Math.max(0, Math.floor(detik || 0));
-  return String(Math.floor(detik / 60)).padStart(2, "0") + ":" + String(detik % 60).padStart(2, "0");
-}
-function cap(d) {
-  const p = (n) => String(n).padStart(2, "0");
-  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + "." + p(d.getMinutes()) + "." + p(d.getSeconds());
-}
-function tundaan(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
+function waktu(d) { d = Math.max(0, Math.floor(d || 0)); return String(Math.floor(d / 60)).padStart(2, "0") + ":" + String(d % 60).padStart(2, "0"); }
+function cap(d) { const p = (n) => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + "." + p(d.getMinutes()) + "." + p(d.getSeconds()); }
+function tundaan(fn, ms) { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+const durasiYt = (d) => (d || "").replace(/\./g, ":");
 
 let toastTimer;
 function toast(teks, galat = false) {
-  let t = $(".toast");
-  if (!t) { t = document.createElement("div"); t.className = "toast glass"; document.body.appendChild(t); }
-  t.className = "toast glass" + (galat ? " galat" : "");
-  t.innerHTML = '<i class="bi ' + (galat ? "bi-exclamation-circle-fill" : "bi-check-circle-fill") + '"></i><span></span>';
-  t.querySelector("span").textContent = teks;
-  t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), galat ? 6000 : 3200);
+  let el = $(".toast");
+  if (!el) { el = document.createElement("div"); document.body.appendChild(el); }
+  el.className = "toast glass" + (galat ? " galat" : "");
+  el.innerHTML = '<i class="bi ' + (galat ? "bi-exclamation-circle-fill" : "bi-check-circle-fill") + '"></i><span></span>';
+  el.querySelector("span").textContent = teks;
+  el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), galat ? 6000 : 3200);
 }
 
 /** Dialog kaca. Mengembalikan isi input (atau true) bila OK, null bila batal. */
-function dialog({ judul, teks = "", input = null, sandi = false, ok = "Simpan", bahaya = false }) {
+function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
   return new Promise((selesai) => {
     const latar = document.createElement("div"); latar.className = "modal-latar";
-    latar.innerHTML = '<div class="modal glass"><h3></h3><p></p>' + (input !== null ? '<input type="' + (sandi ? "password" : "text") + '">' : "") +
-      '<div class="aksi"><button class="btn" data-a="batal">Batal</button><button class="btn ' + (bahaya ? "bahaya" : "primary") + '" data-a="ok"></button></div></div>';
+    latar.innerHTML = '<div class="modal glass"><h3></h3><p></p>' + (input !== null ? '<input type="text">' : "") +
+      '<div class="aksi"><button class="btn" data-a="batal"></button><button class="btn ' + (bahaya ? "bahaya" : "primary") + '" data-a="ok"></button></div></div>';
     latar.querySelector("h3").textContent = judul; latar.querySelector("p").textContent = teks;
-    latar.querySelector('[data-a="ok"]').textContent = ok;
+    latar.querySelector('[data-a="ok"]').textContent = ok; latar.querySelector('[data-a="batal"]').textContent = t("batal");
     const inp = latar.querySelector("input"); if (inp) inp.value = input;
     const tutup = (v) => { latar.remove(); selesai(v); };
     latar.addEventListener("click", (e) => { if (e.target === latar) tutup(null); });
@@ -55,25 +55,44 @@ function dialog({ judul, teks = "", input = null, sandi = false, ok = "Simpan", 
     latar.querySelector('[data-a="ok"]').onclick = () => tutup(inp ? inp.value : true);
     latar.addEventListener("keydown", (e) => { if (e.key === "Enter") tutup(inp ? inp.value : true); if (e.key === "Escape") tutup(null); });
     document.body.appendChild(latar);
-    (inp || latar.querySelector('[data-a="ok"]')).focus();
-    if (inp) inp.select();
+    (inp || latar.querySelector('[data-a="ok"]')).focus(); if (inp) inp.select();
   });
 }
 
-// ================= Pengaturan (warna, mode, perangkat, efek) =================
+// ================= Pengaturan =================
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
-const P = { warna: "biru", mode: "glass-dark", input: "", output: "", preset: "pop", efek: { ...EFEK_AWAL } };
-const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 600);
+const P = {
+  warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
+  modeAudio: "rumah", keraskanOto: true, autoplay: true,
+  profil: { rumah: { input: "", output: "" }, laptop: { input: "", output: "" } },
+};
+const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
 
+const mqGelap = matchMedia("(prefers-color-scheme: dark)");
 function terapkanTema() {
   html.setAttribute("data-warna", P.warna);
-  html.setAttribute("data-ol-skin", P.mode);
+  html.setAttribute("data-ol-skin", P.mode === "auto" ? (mqGelap.matches ? "glass-dark" : "glass-light") : P.mode);
   $$("#warna button").forEach((b) => b.classList.toggle("on", b.dataset.w === P.warna));
-  $$("#mode button").forEach((b) => b.classList.toggle("on", b.dataset.m === P.mode));
+  $$("#tema button").forEach((b) => b.classList.toggle("on", b.dataset.m === P.mode));
+  $$("#bahasa button").forEach((b) => b.classList.toggle("on", b.dataset.l === P.bahasa));
+  $("#swKeraskan").classList.toggle("off", !P.keraskanOto);
+  $("#swAutoplay").classList.toggle("off", !P.autoplay);
   gambarGelombang();
 }
+mqGelap.addEventListener("change", () => { if (P.mode === "auto") terapkanTema(); });
 $$("#warna button").forEach((b) => (b.onclick = () => { P.warna = b.dataset.w; terapkanTema(); simpanPengaturan(); }));
-$$("#mode button").forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; terapkanTema(); simpanPengaturan(); }));
+$$("#tema button").forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; terapkanTema(); simpanPengaturan(); }));
+$$("#bahasa button").forEach((b) => (b.onclick = () => { P.bahasa = b.dataset.l; aturBahasa(P.bahasa); terapkanTema(); segarkanTeks(); simpanPengaturan(); }));
+$("#swKeraskan").onclick = () => { P.keraskanOto = !P.keraskanOto; terapkanTema(); simpanPengaturan(); };
+$("#swAutoplay").onclick = () => { P.autoplay = !P.autoplay; terapkanTema(); tampilkanKolom(); simpanPengaturan(); };
+
+// Laci Pengaturan
+const laci = $("#laci");
+function bukaPengaturan() { laci.classList.add("buka"); isiPengaturanAudio(); }
+$("#btnPengaturan").onclick = bukaPengaturan;
+$("#tutupPengaturan").onclick = () => laci.classList.remove("buka");
+laci.addEventListener("click", (e) => { if (e.target === laci) laci.classList.remove("buka"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") laci.classList.remove("buka"); });
 
 // Tab Studio / Analisa
 $$(".tabs button").forEach((b) => (b.onclick = () => {
@@ -81,88 +100,87 @@ $$(".tabs button").forEach((b) => (b.onclick = () => {
   $$(".pane").forEach((p) => p.classList.toggle("on", p.id === b.dataset.tab));
 }));
 
-// Slider kaca: isi bagian yang sudah dilewati
 function isiSlider(r) { r.style.setProperty("--v", ((r.value - r.min) / (r.max - r.min)) * 100 + "%"); }
-$$('input[type=range]').forEach((r) => { isiSlider(r); r.addEventListener("input", () => isiSlider(r)); });
+$$("input[type=range]").forEach((r) => { isiSlider(r); r.addEventListener("input", () => isiSlider(r)); });
 
-// ================= YouTube =================
-const YT_STATE = { pemutar: null, siap: false, hasil: [], halaman: 0, aktif: -1, status: -1 };
-const PER_HALAMAN = 4;
+// ================= Mode audio (Studio Rumah / Laptop) =================
+// Nama perangkat dari browser kadang berbeda sedikit dengan Windows, misalnya "Default - ..." atau akhiran "(001f:0b21)".
+const bersihNama = (label) => (label || "").replace(/^(Default|Communications|Bawaan|Komunikasi)\s*-\s*/i, "").replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "").trim();
+const cocok = (label, nama) => !!nama && bersihNama(label).toLowerCase() === nama.toLowerCase();
+let AUDIO = { output: [], input: [], bawaanOutput: "", bawaanInput: "" };
 
-window.onYouTubeIframeAPIReady = () => { YT_STATE.siap = true; perbaruiSiap(); };
-(function muatYouTube() {
-  const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api";
-  s.onerror = () => toast("Pemutar YouTube tidak bisa dimuat. Cek koneksi internet.", true);
-  document.head.appendChild(s);
-})();
+/** Tebak perangkat yang pas untuk tiap mode bila belum pernah diatur. */
+function tebakProfil() {
+  const cari = (daftar, pola, kecuali) => daftar.find((n) => pola.test(n) && !(kecuali && kecuali.test(n))) || "";
+  const laptopOut = cari(AUDIO.output, /C-Media|Realtek|Speakers? \(|Speaker/i, /YA USB|USB Audio|AI Noise|Bluetooth|Headphones|Headset/i);
+  const laptopIn = cari(AUDIO.input, /C-Media|Realtek|Microphone Array|Mikrofon|Microphone/i, /YA USB|USB Audio|AI Noise|Headset|Hands-Free/i);
+  const rumahIn = cari(AUDIO.input, /YA USB|USB Audio/i);
+  // Speaker mixer = perangkat Bluetooth/lain yang bukan speaker laptop dan bukan converter
+  const rumahOut = (AUDIO.bawaanOutput && !/YA USB|USB Audio|AI Noise/i.test(AUDIO.bawaanOutput) && AUDIO.bawaanOutput !== laptopOut && AUDIO.bawaanOutput)
+    || cari(AUDIO.output, /.*/, /YA USB|USB Audio|AI Noise|C-Media|Realtek/i);
+  const p = P.profil;
+  if (!p.rumah.input) p.rumah.input = rumahIn;
+  if (!p.rumah.output) p.rumah.output = rumahOut;
+  if (!p.laptop.input) p.laptop.input = laptopIn;
+  if (!p.laptop.output) p.laptop.output = laptopOut;
+}
 
-$("#cari").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const kata = $("#kata").value.trim(); if (!kata) return;
-  $("#hasil").innerHTML = '<div class="info"><span class="proses"><span class="putar"></span>Mencari di YouTube…</span></div>';
-  try {
-    YT_STATE.hasil = await apiJson("cari?" + q({ q: kata }));
-    YT_STATE.halaman = 0;
-    tampilkanHasil();
-    if (!YT_STATE.hasil.length) $("#hasil").innerHTML = '<div class="info">Tidak ada hasil. Coba kata lain.</div>';
-  } catch (err) {
-    $("#hasil").innerHTML = '<div class="info">Pencarian gagal: ' + esc(err.message) + "</div>";
+async function muatAudio() {
+  try { AUDIO = await apiJson("audio"); } catch {}
+  tebakProfil();
+}
+
+function isiPengaturanAudio() {
+  for (const mode of ["rumah", "laptop"]) {
+    for (const arah of ["input", "output"]) {
+      const sel = $('[data-pilih="' + mode + "-" + arah + '"]'), daftar = AUDIO[arah], kini = P.profil[mode][arah];
+      const opsi = daftar.slice(); if (kini && !opsi.includes(kini)) opsi.unshift(kini);
+      sel.innerHTML = opsi.map((n) => '<option value="' + esc(n) + '">' + esc(n) + (daftar.includes(n) ? "" : " ✕") + "</option>").join("");
+      sel.value = kini;
+      sel.onchange = () => { P.profil[mode][arah] = sel.value; simpanPengaturan(); if (P.modeAudio === mode) aktifkanMode(mode, true); };
+    }
+    $('.profil[data-profil="' + mode + '"]').classList.toggle("on", P.modeAudio === mode);
+    const b = $('[data-aktifkan="' + mode + '"]');
+    b.textContent = P.modeAudio === mode ? t("aktif") : t("aktifkan");
+    b.className = "btn kecil" + (P.modeAudio === mode ? " primary" : "");
+    b.onclick = () => aktifkanMode(mode);
   }
-});
-
-function tampilkanHasil() {
-  const h = YT_STATE.hasil, mulai = YT_STATE.halaman * PER_HALAMAN;
-  $("#hasil").innerHTML = h.slice(mulai, mulai + PER_HALAMAN).map((v, i) =>
-    '<div class="res' + (mulai + i === YT_STATE.aktif ? " on" : "") + '" data-i="' + (mulai + i) + '" title="' + esc(v.judul) + '">' +
-    '<div class="thumb" style="background-image:url(https://i.ytimg.com/vi/' + v.id + '/mqdefault.jpg)">' + (v.durasi ? "<small>" + esc(v.durasi.replace(".", ":")) + "</small>" : "") + "</div>" +
-    "<div><b>" + esc(v.judul) + "</b><span>" + esc(v.channel) + "</span></div></div>").join("");
-  $$("#hasil .res").forEach((el) => (el.onclick = () => putarVideo(+el.dataset.i)));
-  $("#resPrev").disabled = YT_STATE.halaman === 0;
-  $("#resNext").disabled = mulai + PER_HALAMAN >= h.length;
+  apiJson("info").then((j) => ($("#folderRekaman").textContent = j.folder)).catch(() => {});
 }
-$("#resPrev").onclick = () => { YT_STATE.halaman--; tampilkanHasil(); };
-$("#resNext").onclick = () => { YT_STATE.halaman++; tampilkanHasil(); };
 
-function putarVideo(i) {
-  const v = YT_STATE.hasil[i]; if (!v) return;
-  if (!YT_STATE.siap) { toast("Pemutar YouTube belum siap, tunggu sebentar.", true); return; }
-  YT_STATE.aktif = i;
-  YT_STATE.halaman = Math.floor(i / PER_HALAMAN); tampilkanHasil();
-  $("#ytKosong").hidden = true;
-  $("#ytJudul").textContent = v.judul;
-  $("#ytInfo").textContent = v.channel + (v.durasi ? " · " + v.durasi.replace(".", ":") : "");
-  if (!YT_STATE.pemutar) {
-    YT_STATE.pemutar = new YT.Player("ytPlayer", {
-      videoId: v.id,
-      playerVars: { autoplay: 1, rel: 0, playsinline: 1, origin: location.origin },
-      events: {
-        onStateChange: (e) => { YT_STATE.status = e.data; perbaruiTombolYt(); perbaruiSiap(); },
-        onError: (e) => {
-          if (e.data === 101 || e.data === 150 || e.data === 100) {
-            toast("Video ini tidak boleh diputar di aplikasi lain. Pindah ke hasil berikutnya.", true);
-            if (YT_STATE.aktif + 1 < YT_STATE.hasil.length) putarVideo(YT_STATE.aktif + 1);
-          }
-        },
-      },
-    });
-  } else YT_STATE.pemutar.loadVideoById(v.id);
+/**
+ * Aktifkan mode audio: atur speaker & mic bawaan Windows (YouTube ikut pindah),
+ * pilih perangkat rekam dan speaker pemutar, lalu atur volume input.
+ */
+async function aktifkanMode(mode, diam = false) {
+  P.modeAudio = mode; simpanPengaturan();
+  $$("#modeAudio button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+  if (!AUDIO.input.length) await muatAudio();
+  const prof = P.profil[mode];
+  const adaIn = AUDIO.input.includes(prof.input), adaOut = AUDIO.output.includes(prof.output);
+  if (adaOut) await api("audio?" + q({ arah: "output", nama: prof.output }), { method: "POST" }).catch(() => {});
+  if (adaIn) await api("audio?" + q({ arah: "input", nama: prof.input }), { method: "POST" }).catch(() => {});
+  if (adaIn) await api("volume?" + q({ nama: prof.input, nilai: mode === "rumah" ? 90 : 80 }), { method: "POST" }).catch(() => {});
+  await isiPerangkatBrowser();
+  isiPengaturanAudio(); perbaruiRingkas(); perbaruiSiap();
+  if (!diam) {
+    if (mode === "rumah" && !adaIn) toast(t("converterTidakAda"), true);
+    else toast(t("modeDiaktifkan") + ": " + t(mode === "rumah" ? "modeRumah" : "modeLaptop"));
+  }
 }
-function perbaruiTombolYt() {
-  const main = YT_STATE.status === 1 || YT_STATE.status === 3;
-  $("#ytPlay").innerHTML = main ? '<i class="bi bi-pause-fill"></i><span>Jeda</span>' : '<i class="bi bi-play-fill"></i><span>Putar</span>';
-}
-$("#ytPlay").onclick = () => {
-  const p = YT_STATE.pemutar;
-  if (!p) { if (YT_STATE.hasil.length) putarVideo(0); else $("#kata").focus(); return; }
-  if (YT_STATE.status === 1 || YT_STATE.status === 3) p.pauseVideo(); else p.playVideo();
-};
-$("#ytPrev").onclick = () => { if (YT_STATE.aktif > 0) putarVideo(YT_STATE.aktif - 1); };
-$("#ytNext").onclick = () => { if (YT_STATE.aktif + 1 < YT_STATE.hasil.length) putarVideo(YT_STATE.aktif + 1); };
+$$("#modeAudio button").forEach((b) => (b.onclick = () => aktifkanMode(b.dataset.mode)));
 
-// ================= Perangkat & monitor level =================
-const M = { ctx: null, stream: null, node: null, rek: false, potongan: [], puncak: 0, tampil: 0, riwayat: [], mulai: 0, timer: null };
+function perbaruiRingkas() {
+  const prof = P.profil[P.modeAudio];
+  $("#ringkasPerangkat").innerHTML = '<i class="bi ' + (P.modeAudio === "rumah" ? "bi-usb-symbol" : "bi-mic") + '" style="color:var(--p)"></i> <b>' + esc(prof.input || "-") + "</b><br>" +
+    '<i class="bi bi-speaker" style="color:var(--p)"></i> ' + esc(t("putarKe")) + " <b>" + esc(prof.output || "-") + '</b> · <a id="lnkUbah">' + esc(t("ubah")) + "</a>";
+  $("#lnkUbah").onclick = bukaPengaturan;
+}
+
+// ================= Perangkat browser & monitor level =================
+const M = { ctx: null, stream: null, node: null, sumber: null, rek: false, potongan: [], puncak: 0, tampil: 0, riwayat: [], mulai: 0, izin: false, idInput: "", idOutput: "" };
 const KODE_WORKLET = `
-class PerekamOrulab extends AudioWorkletProcessor {
+class PerekamOrulabs extends AudioWorkletProcessor {
   constructor() { super(); this.rek = false; this.buf = new Float32Array(2048); this.i = 0; this.p = 0;
     this.port.onmessage = (e) => { this.rek = e.data; }; }
   process(inputs) {
@@ -175,55 +193,40 @@ class PerekamOrulab extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor("perekam-orulab", PerekamOrulab);`;
+registerProcessor("perekam-orulabs", PerekamOrulabs);`;
 
-const namaWindows = (label) => (label || "").replace(/^(Default|Communications|Bawaan|Komunikasi)\s*-\s*/i, "");
-
-async function isiPerangkat() {
+/** Pilih mic dan speaker di browser sesuai mode aktif, lalu mulai pantau level. */
+async function isiPerangkatBrowser() {
   try {
-    if (!M.izin) {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-      s.getTracks().forEach((t) => t.stop()); M.izin = true;
-    }
-  } catch {
-    $("#timerKet").textContent = "Izinkan akses mikrofon supaya bisa merekam";
-    toast("Akses mikrofon ditolak. Klik ikon gembok di bar alamat lalu izinkan Mikrofon.", true);
-    return;
-  }
-  const semua = await navigator.mediaDevices.enumerateDevices();
+    if (!M.izin) { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach((x) => x.stop()); M.izin = true; }
+  } catch { toast(t("micDitolak"), true); return; }
+  const semua = await navigator.mediaDevices.enumerateDevices(), prof = P.profil[P.modeAudio];
   const masuk = semua.filter((d) => d.kind === "audioinput" && d.deviceId !== "communications");
   const keluar = semua.filter((d) => d.kind === "audiooutput" && d.deviceId !== "communications");
-  const isi = (sel, daftar, simpan, cadangan) => {
-    sel.innerHTML = daftar.map((d) => '<option value="' + esc(d.deviceId) + '">' + esc(d.label || "Perangkat") + "</option>").join("");
-    const cocok = daftar.find((d) => d.label === simpan) || (cadangan && daftar.find((d) => cadangan.test(d.label) && d.deviceId !== "default")) || daftar[0];
-    if (cocok) sel.value = cocok.deviceId;
-  };
-  isi($("#pilihInput"), masuk, P.input, /YA USB|USB Audio/i);
-  isi($("#pilihOutput"), keluar, P.output, null);
-  await mulaiMonitor();
+  const dIn = masuk.find((d) => d.deviceId !== "default" && cocok(d.label, prof.input)) || masuk.find((d) => d.deviceId === "default") || masuk[0];
+  const dOut = keluar.find((d) => d.deviceId !== "default" && cocok(d.label, prof.output)) || keluar.find((d) => d.deviceId === "default") || keluar[0];
+  M.labelInput = dIn ? bersihNama(dIn.label) : ""; M.labelOutput = dOut ? bersihNama(dOut.label) : "";
+  M.idOutput = dOut ? dOut.deviceId : "";
+  if (dIn && dIn.deviceId !== M.idInput) { M.idInput = dIn.deviceId; await mulaiMonitor(); }
+  bacaVolume();
 }
-navigator.mediaDevices.addEventListener("devicechange", tundaan(() => { if (!M.rek) isiPerangkat(); }, 800));
-
-$("#pilihInput").onchange = () => { P.input = $("#pilihInput").selectedOptions[0]?.textContent || ""; simpanPengaturan(); mulaiMonitor(); };
-$("#pilihOutput").onchange = () => { P.output = $("#pilihOutput").selectedOptions[0]?.textContent || ""; simpanPengaturan(); };
+navigator.mediaDevices.addEventListener("devicechange", tundaan(async () => { if (M.rek) return; await muatAudio(); await isiPerangkatBrowser(); perbaruiSiap(); }, 900));
 
 async function mulaiMonitor() {
-  const id = $("#pilihInput").value; if (!id) return;
-  if (M.stream) M.stream.getTracks().forEach((t) => t.stop());
+  if (M.stream) M.stream.getTracks().forEach((x) => x.stop());
   try {
     M.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { deviceId: { exact: id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
+      audio: { deviceId: { exact: M.idInput }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
     });
-  } catch (e) { toast("Perangkat rekam tidak bisa dibuka: " + e.message, true); return; }
+  } catch (e) { toast(t("perangkatGagal") + ": " + e.message, true); return; }
   if (!M.ctx) {
     M.ctx = new AudioContext({ latencyHint: "interactive" });
-    const url = URL.createObjectURL(new Blob([KODE_WORKLET], { type: "text/javascript" }));
-    await M.ctx.audioWorklet.addModule(url);
+    await M.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([KODE_WORKLET], { type: "text/javascript" })));
   }
   if (M.sumber) M.sumber.disconnect();
   M.sumber = M.ctx.createMediaStreamSource(M.stream);
   if (!M.node) {
-    M.node = new AudioWorkletNode(M.ctx, "perekam-orulab");
+    M.node = new AudioWorkletNode(M.ctx, "perekam-orulabs");
     M.node.port.onmessage = (e) => {
       const { p, d } = e.data;
       if (p > M.puncak) M.puncak = p;
@@ -234,96 +237,86 @@ async function mulaiMonitor() {
     M.node.connect(sunyi); sunyi.connect(M.ctx.destination);
   }
   M.sumber.connect(M.node);
-  bacaVolume();
   perbaruiSiap();
 }
-// Browser menahan audio sebelum ada klik pertama
 document.addEventListener("pointerdown", () => { if (M.ctx && M.ctx.state === "suspended") M.ctx.resume(); }, true);
 
-// Meter level hijau-kuning-merah
 const segmen = [];
 for (let i = 0; i < 30; i++) { const s = document.createElement("i"); $("#meter").appendChild(s); segmen.push(s); }
-function animasiMeter() {
+(function animasiMeter() {
   M.tampil = Math.max(M.puncak, M.tampil * 0.86); M.puncak = 0;
   const dbv = 20 * Math.log10(Math.max(M.tampil, 1e-6)), nyala = Math.round(Math.max(0, Math.min(1, (dbv + 60) / 60)) * 30);
   segmen.forEach((s, i) => (s.style.background = i < nyala ? (i < 20 ? "#34d399" : i < 26 ? "#fbbf24" : "#ff4d5e") : ""));
   if (M.rek) $("#timer").textContent = waktu((performance.now() - M.mulai) / 1000);
   requestAnimationFrame(animasiMeter);
-}
-requestAnimationFrame(animasiMeter);
+})();
 
-// Volume input Windows
 async function bacaVolume() {
-  const nama = namaWindows($("#pilihInput").selectedOptions[0]?.textContent);
   try {
-    const j = await apiJson("volume?" + q({ nama }));
+    const j = await apiJson("volume?" + q({ nama: M.labelInput }));
     const ada = j.nilai >= 0; $("#volInput").disabled = !ada;
     if (ada) { $("#volInput").value = j.nilai; isiSlider($("#volInput")); }
     $("#volNilai").textContent = ada ? j.nilai + "%" : "–";
   } catch {}
 }
-const aturVolume = tundaan(async (v) => {
-  const nama = namaWindows($("#pilihInput").selectedOptions[0]?.textContent);
-  try { await api("volume?" + q({ nama, nilai: v }), { method: "POST" }); } catch {}
-}, 150);
+const aturVolume = tundaan((v) => api("volume?" + q({ nama: M.labelInput, nilai: v }), { method: "POST" }).catch(() => {}), 150);
 $("#volInput").addEventListener("input", (e) => { $("#volNilai").textContent = e.target.value + "%"; aturVolume(e.target.value); });
 
-// Status "Siap rekam"
 function setCek(id, ok, teks) {
   const el = $(id); el.classList.toggle("no", !ok);
   el.querySelector("i").className = "bi " + (ok ? "bi-check-circle-fill" : "bi-exclamation-circle-fill");
-  if (teks) el.querySelector("span").textContent = teks;
+  el.querySelector("span").textContent = teks;
 }
 function perbaruiSiap() {
-  const label = $("#pilihInput").selectedOptions[0]?.textContent || "";
-  const inputOk = !!(M.stream && M.stream.active);
-  const converter = /YA USB|USB/i.test(label);
+  const prof = P.profil[P.modeAudio];
+  const inputOk = !!(M.stream && M.stream.active) && (!prof.input || cocok(M.labelInput, prof.input));
+  const outputOk = !!prof.output && AUDIO.output.includes(prof.output);
   const kini = performance.now(); M.riwayat = M.riwayat.filter((r) => kini - r.t < 3000);
   const maks = M.riwayat.reduce((a, r) => Math.max(a, r.p), 0), dbMaks = 20 * Math.log10(Math.max(maks, 1e-6));
-  setCek("#cekInput", inputOk && converter, inputOk ? (converter ? "Converter" : "Bukan converter") : "Input mati");
-  setCek("#cekOutput", !!$("#pilihOutput").value, "Speaker");
-  setCek("#cekLevel", dbMaks > -30 && dbMaks < -3, dbMaks >= -3 ? "Terlalu keras" : dbMaks <= -30 ? "Level pelan" : "Level pas");
-  setCek("#cekYt", YT_STATE.status === 1, YT_STATE.status === 1 ? "YouTube jalan" : "YouTube diam");
-  const siap = inputOk;
-  $("#siapTeks").textContent = siap ? (M.rek ? "Merekam" : "Siap rekam") : "Cek converter";
-  $("#siapDot").style.background = siap ? (M.rek ? "#ff4d5e" : "") : "#fbbf24";
-  $("#siap").title = "Rekam dari: " + (label || "-");
+  setCek("#cekInput", inputOk, t("cekInput"));
+  setCek("#cekOutput", outputOk, t("cekSpeaker"));
+  setCek("#cekLevel", dbMaks > -30 && dbMaks < -3, dbMaks >= -3 ? t("terlaluKeras") : dbMaks <= -30 ? t("levelPelan") : t("levelPas"));
+  setCek("#cekYt", YT.status === 1, YT.status === 1 ? t("ytJalan") : t("ytDiam"));
+  $("#siapTeks").textContent = inputOk ? (M.rek ? t("merekamChip") : t("siapRekam")) : (P.modeAudio === "rumah" ? t("cekConverter") : t("cekMic"));
+  $("#siapDot").style.background = inputOk ? (M.rek ? "#ff4d5e" : "") : "#fbbf24";
+  // Titik kuning di tombol Pengaturan bila perangkat belum siap (misalnya converter belum dicolok)
+  $("#btnPengaturan").classList.toggle("peringatan", !inputOk || !outputOk);
+  $("#btnPengaturan").title = $("#siapTeks").textContent;
+  $("#siap").title = (prof.input || "-") + " → " + (prof.output || "-");
 }
 setInterval(perbaruiSiap, 1000);
 
 // ================= Merekam =================
 async function mulaiRekam() {
-  if (!M.node || !M.stream || !M.stream.active) { toast("Perangkat rekam belum siap. Cek pilihan \"Rekam dari\".", true); return; }
+  if (!M.node || !M.stream || !M.stream.active) { toast(t("belumSiap"), true); return; }
   if (Pm.main) hentikanPutar();
   await M.ctx.resume();
   M.potongan = []; M.rek = true; M.node.port.postMessage(true); M.mulai = performance.now();
-  $("#btnRekam").classList.add("on"); $("#btnRekam").querySelector("i").className = "bi bi-stop-fill"; $("#btnRekam").title = "Selesai merekam";
-  $("#recPill").classList.remove("diam"); $("#recPill").querySelector("span").textContent = "REC";
-  $("#timerKet").textContent = "Merekam · tersimpan otomatis saat Stop";
+  $("#btnRekam").classList.add("on"); $("#btnRekam i").className = "bi bi-stop-fill";
+  $("#recPill").classList.remove("diam"); $("#recPill span").textContent = t("rec");
+  $("#timerKet").textContent = t("merekamKet");
   aturTombol(); perbaruiSiap();
 }
-
 async function selesaiRekam() {
-  M.node.port.postMessage(false);
-  await new Promise((r) => setTimeout(r, 120));
-  M.rek = false;
-  $("#btnRekam").classList.remove("on"); $("#btnRekam").querySelector("i").className = "bi bi-mic-fill"; $("#btnRekam").title = "Rekam";
-  $("#recPill").classList.add("diam"); $("#recPill").querySelector("span").textContent = "SIAP";
-  $("#timerKet").textContent = "Tekan tombol merah untuk mulai merekam";
+  M.node.port.postMessage(false); await tunggu(120); M.rek = false;
+  $("#btnRekam").classList.remove("on"); $("#btnRekam i").className = "bi bi-mic-fill";
+  $("#recPill").classList.add("diam"); $("#recPill span").textContent = t("siap");
+  $("#timerKet").textContent = t("tekanRekam");
   aturTombol(); perbaruiSiap();
-  const total = M.potongan.reduce((a, c) => a + c.length, 0), data = new Float32Array(total);
-  let o = 0; for (const c of M.potongan) { data.set(c, o); o += c.length; }
+  const total = M.potongan.reduce((a, c) => a + c.length, 0);
+  let data = new Float32Array(total), o = 0;
+  for (const c of M.potongan) { data.set(c, o); o += c.length; }
   M.potongan = [];
   const rate = M.ctx.sampleRate;
-  if (total < rate * 0.5) { toast("Rekaman terlalu pendek, tidak disimpan.", true); return; }
+  if (total < rate * 0.5) { toast(t("terlaluPendek"), true); return; }
+  if (P.keraskanOto) data = dsp.keraskanRekaman(data, rate);
   try {
     const j = await apiJson("rekaman/simpan?" + q({ nama: "Rekaman " + cap(new Date()) }), { method: "POST", body: dsp.keWav(data, rate) });
-    toast("Tersimpan: " + j.nama);
-    await muatDaftar();
-    tampilkanRekaman(j.nama, data, rate);
-  } catch (e) { toast("Gagal menyimpan rekaman: " + e.message, true); }
+    toast(t("tersimpan") + ": " + j.nama + (P.keraskanOto ? " (" + t("dikeraskan") + ")" : ""));
+    await muatDaftar(); tampilkanRekaman(j.nama, data, rate);
+    $("#btnRapikan").classList.add("baru"); toast(t("rapikanSiap"));
+  } catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
 }
-
 $("#btnRekam").onclick = () => (M.rek ? selesaiRekam() : mulaiRekam());
 $("#btnStop").onclick = () => { if (M.rek) selesaiRekam(); else if (Pm.main) hentikanPutar(); };
 
@@ -332,14 +325,14 @@ const R = { daftar: [], nama: null, asli: null, rate: 48000, studio: null, anali
 
 async function muatDaftar() {
   try { R.daftar = await apiJson("rekaman"); } catch { R.daftar = []; }
-  $("#jumlah").textContent = R.daftar.length ? R.daftar.length + " file" : "";
+  $("#jumlah").textContent = R.daftar.length || "";
   const hariIni = new Date().toDateString();
   $("#daftar").innerHTML = R.daftar.length ? R.daftar.map((r) => {
-    const t = new Date(r.waktu), studio = /\(Studio\)/i.test(r.nama);
-    const kapan = t.toDateString() === hariIni ? "Hari ini " + t.toTimeString().slice(0, 5) : t.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    const w = new Date(r.waktu), studio = /\(Studio\)/i.test(r.nama);
+    const kapan = w.toDateString() === hariIni ? w.toTimeString().slice(0, 5) : w.toLocaleDateString(P.bahasa === "en" ? "en-GB" : "id-ID", { day: "numeric", month: "short" });
     return '<div class="item' + (r.nama === R.nama ? " on" : "") + '" data-n="' + esc(r.nama) + '"><div class="ic"><i class="bi ' + (studio ? "bi-stars" : "bi-play-fill") + '"></i></div>' +
-      "<div><b>" + esc(r.nama) + "</b><span>" + kapan + " · " + (studio ? "Studio" : "Asli") + '</span></div><div class="r">' + waktu(r.durasi) + "</div></div>";
-  }).join("") : '<div class="info">Belum ada rekaman. Tekan tombol merah untuk mulai merekam.</div>';
+      "<div><b>" + esc(r.nama) + "</b><span>" + kapan + " · " + t(studio ? "studio" : "asli") + '</span></div><div class="r">' + waktu(r.durasi) + "</div></div>";
+  }).join("") : '<div class="info">' + esc(t("belumRekaman")) + "</div>";
   $$("#daftar .item").forEach((el) => (el.onclick = () => bukaRekaman(el.dataset.n)));
 }
 
@@ -351,83 +344,69 @@ async function bukaRekaman(nama) {
     let w = dsp.bacaWav(buf);
     if (!w) { const ac = new OfflineAudioContext(1, 1, 48000); const ab = await ac.decodeAudioData(buf); w = { data: dsp.keMono(ab), rate: ab.sampleRate }; }
     tampilkanRekaman(nama, w.data, w.rate);
-  } catch (e) { toast("Rekaman tidak bisa dibuka: " + e.message, true); }
+  } catch (e) { toast(e.message, true); }
 }
 
 function tampilkanRekaman(nama, data, rate) {
   Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1 });
-  $("#namaRekaman").textContent = nama;
+  $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
   $$("#daftar .item").forEach((el) => el.classList.toggle("on", el.dataset.n === nama));
-  Pm.posisi = 0;
-  setLihat("asli");
-  R.analisa = dsp.analisa(data, rate);
-  tampilkanAnalisa();
-  $("#claudeSay").innerHTML = '<i class="bi bi-info-circle"></i> Tekan "Rapikan sekarang" supaya efek dipilih otomatis untuk rekaman ini.';
-  $("#claudeSay").classList.remove("galat");
-  prosesUlang();
-  aturTombol();
+  Pm.posisi = 0; setLihat("asli");
+  R.analisa = dsp.analisa(data, rate); tampilkanAnalisa();
+  prosesUlang(); aturTombol();
 }
 
 $("#btnGanti").onclick = async () => {
   if (!R.nama) return;
-  const baru = await dialog({ judul: "Ganti nama rekaman", input: R.nama, ok: "Ganti" });
+  const baru = await dialog({ judul: t("gantiNama"), input: R.nama, ok: t("ganti") });
   if (!baru || baru.trim() === R.nama) return;
-  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast("Nama diganti"); }
+  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast(t("namaDiganti")); }
   catch (e) { toast(e.message, true); }
 };
 $("#btnHapus").onclick = async () => {
   if (!R.nama) return;
-  const ya = await dialog({ judul: "Hapus rekaman?", teks: "\"" + R.nama + "\" dipindah ke Recycle Bin. Masih bisa dikembalikan dari sana.", ok: "Hapus", bahaya: true });
-  if (!ya) return;
+  if (!(await dialog({ judul: t("hapusJudul"), teks: "\"" + R.nama + "\" " + t("hapusKet"), ok: t("hapus"), bahaya: true }))) return;
   try {
     if (Pm.main) hentikanPutar();
     await api("rekaman/hapus?" + q({ nama: R.nama }), { method: "POST" });
     Object.assign(R, { nama: null, asli: null, studio: null, analisa: null });
-    $("#namaRekaman").textContent = "Belum ada rekaman dipilih";
-    gambarGelombang(); tampilkanAnalisa(); aturTombol(); await muatDaftar(); toast("Dipindah ke Recycle Bin");
+    $("#namaRekaman").setAttribute("data-t", "belumDipilih"); $("#namaRekaman").textContent = t("belumDipilih");
+    gambarGelombang(); tampilkanAnalisa(); aturTombol(); await muatDaftar(); toast(t("keRecycle"));
   } catch (e) { toast(e.message, true); }
 };
-$("#btnFolder").onclick = () => api("folder" + (R.nama ? "?" + q({ nama: R.nama }) : ""), { method: "POST" }).catch((e) => toast(e.message, true));
+const bukaFolder = () => api("folder" + (R.nama ? "?" + q({ nama: R.nama }) : ""), { method: "POST" }).catch((e) => toast(e.message, true));
+$("#btnFolder").onclick = bukaFolder;
+$("#btnBukaFolder").onclick = bukaFolder;
 
-// ================= Gelombang, potong, dan posisi =================
+// ================= Gelombang, potong, posisi =================
 const kanvas = $("#wave"), wadah = $("#gelombang");
 const dataTampil = () => (R.lihat === "studio" ? R.studio : R.asli);
+let cachePuncak = null;
 
 function gambarGelombang() {
   const r = window.devicePixelRatio || 1, w = kanvas.clientWidth, h = kanvas.clientHeight;
   kanvas.width = w * r; kanvas.height = h * r;
   const g = kanvas.getContext("2d"); g.scale(r, r); g.clearRect(0, 0, w, h);
-  const x = dataTampil();
+  const x = dataTampil(), studioView = R.lihat === "studio";
   $("#waveKosong").hidden = !!x;
-  $("#waveKosong").textContent = R.asli && !x ? "Hasil studio sedang diproses…" : "Rekam atau pilih rekaman untuk melihat gelombang suara";
-  const studioView = R.lihat === "studio";
+  $("#waveKosong").textContent = R.asli && !x ? t("diproses") : t("gelombangKosong");
   ["#hL", "#hR", "#trimL", "#trimR"].forEach((s) => ($(s).hidden = !x || studioView));
   if (!x) { $("#penggaris").innerHTML = ""; return; }
-  const css = getComputedStyle(html), p = css.getPropertyValue("--p").trim(), p2 = css.getPropertyValue("--p2").trim();
-  const grad = g.createLinearGradient(0, 0, w, 0); grad.addColorStop(0, p); grad.addColorStop(1, p2);
+  const css = getComputedStyle(html), grad = g.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0, css.getPropertyValue("--p").trim()); grad.addColorStop(1, css.getPropertyValue("--p2").trim());
   const kolom = Math.max(1, Math.floor(w / 3)), posisi = (Pm.main ? Pm.posisiKini : Pm.posisi) / (x.length / R.rate);
-  // Puncak per kolom disimpan supaya menggambar ulang (saat memutar) tetap ringan
   if (!cachePuncak || cachePuncak.data !== x || cachePuncak.kolom !== kolom) {
     const per = x.length / kolom, pk = new Float32Array(kolom);
-    for (let c = 0; c < kolom; c++) {
-      let mx = 0; const a = Math.floor(c * per), b = Math.min(x.length, Math.floor((c + 1) * per));
-      for (let i = a; i < b; i += 2) { const v = Math.abs(x[i]); if (v > mx) mx = v; }
-      pk[c] = mx;
-    }
+    for (let c = 0; c < kolom; c++) { let mx = 0; const a = Math.floor(c * per), b = Math.min(x.length, Math.floor((c + 1) * per)); for (let i = a; i < b; i += 2) { const v = Math.abs(x[i]); if (v > mx) mx = v; } pk[c] = mx; }
     cachePuncak = { data: x, kolom, pk };
   }
   for (let c = 0; c < kolom; c++) {
-    const mx = cachePuncak.pk[c];
-    const bh = Math.max(2, Math.min(1, mx * 1.15) * (h - 12));
+    const mx = cachePuncak.pk[c], bh = Math.max(2, Math.min(1, mx * 1.15) * (h - 12));
     const fr = c / kolom, diPotong = !studioView && (fr < R.awal || fr > R.akhir);
-    // Bagian yang sudah diputar terang, sisanya lebih redup, bagian yang dipotong paling redup
     g.globalAlpha = diPotong ? 0.18 : fr < posisi ? 1 : 0.5;
-    g.fillStyle = mx >= 0.99 ? "#ff4d5e" : grad;
-    g.fillRect(c * 3, (h - bh) / 2, 2, bh);
+    g.fillStyle = mx >= 0.99 ? "#ff4d5e" : grad; g.fillRect(c * 3, (h - bh) / 2, 2, bh);
   }
-  g.globalAlpha = 1;
-  g.fillStyle = "#fbbf24"; g.fillRect(Math.round(w * Math.min(1, posisi)), 0, 2, h);
-  // pegangan potong
+  g.globalAlpha = 1; g.fillStyle = "#fbbf24"; g.fillRect(Math.round(w * Math.min(1, posisi)), 0, 2, h);
   if (!studioView) {
     $("#hL").style.left = R.awal * 100 + "%"; $("#hR").style.left = R.akhir * 100 + "%";
     $("#trimL").style.width = R.awal * 100 + "%"; $("#trimR").style.width = (1 - R.akhir) * 100 + "%";
@@ -435,15 +414,13 @@ function gambarGelombang() {
   const dur = x.length / R.rate;
   $("#penggaris").innerHTML = [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => "<span>" + waktu(dur * f) + "</span>").join("");
 }
-let cachePuncak = null;
 new ResizeObserver(() => gambarGelombang()).observe(wadah);
 
-// Seret pegangan potong
 function seret(pegangan, ke) {
   pegangan.addEventListener("pointerdown", (e) => {
     e.stopPropagation(); pegangan.setPointerCapture(e.pointerId);
     const gerak = (ev) => {
-      const kotak = wadah.getBoundingClientRect(), f = Math.max(0, Math.min(1, (ev.clientX - kotak.left) / kotak.width));
+      const k = wadah.getBoundingClientRect(), f = Math.max(0, Math.min(1, (ev.clientX - k.left) / k.width));
       if (ke === "awal") R.awal = Math.min(f, R.akhir - 0.02); else R.akhir = Math.max(f, R.awal + 0.02);
       gambarGelombang();
     };
@@ -452,40 +429,39 @@ function seret(pegangan, ke) {
   });
 }
 seret($("#hL"), "awal"); seret($("#hR"), "akhir");
-
-// Klik gelombang = pindah posisi putar
 wadah.addEventListener("click", (e) => {
   const x = dataTampil(); if (!x) return;
-  const kotak = wadah.getBoundingClientRect(), f = (e.clientX - kotak.left) / kotak.width;
-  Pm.posisi = f * x.length / R.rate;
+  const k = wadah.getBoundingClientRect(); Pm.posisi = ((e.clientX - k.left) / k.width) * x.length / R.rate;
   if (Pm.main) { hentikanPutar(false); putar(); } else gambarGelombang();
 });
-
-// Asli / Hasil studio
 function setLihat(v) {
   R.lihat = v; $$("#ab button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
-  if (Pm.main) hentikanPutar();
-  Pm.posisi = 0; gambarGelombang();
+  if (Pm.main) hentikanPutar(); Pm.posisi = 0; gambarGelombang();
 }
 $$("#ab button").forEach((b) => (b.onclick = () => setLihat(b.dataset.v)));
 
-// ================= Memutar rekaman =================
+// ================= Memutar rekaman (ke speaker mode aktif) =================
 const Pm = { ctx: null, src: null, main: false, posisi: 0, mulaiCtx: 0, mulaiPos: 0, sink: null };
 Object.defineProperty(Pm, "posisiKini", { get() { return Pm.main ? Pm.mulaiPos + (Pm.ctx.currentTime - Pm.mulaiCtx) : Pm.posisi; } });
 
-async function putar() {
-  const x = dataTampil();
-  if (!x) { if (R.asli && R.lihat === "studio") toast("Hasil studio masih diproses, tunggu sebentar."); return; }
-  if (M.rek) return;
+/** Siapkan AudioContext pemutar dan arahkan ke speaker mode aktif. */
+async function siapkanPemutar() {
   if (!Pm.ctx) Pm.ctx = new AudioContext();
-  const sink = $("#pilihOutput").value === "default" ? "" : $("#pilihOutput").value;
+  const sink = M.idOutput && M.idOutput !== "default" ? M.idOutput : "";
   if (Pm.ctx.setSinkId && Pm.sink !== sink) { try { await Pm.ctx.setSinkId(sink); Pm.sink = sink; } catch {} }
   await Pm.ctx.resume();
+}
+async function putar() {
+  const x = dataTampil();
+  if (!x) { if (R.asli && R.lihat === "studio") toast(t("studioBelum")); return; }
+  if (M.rek) return;
+  await siapkanPemutar();
   const b = Pm.ctx.createBuffer(1, x.length, R.rate); b.copyToChannel(x, 0);
-  const dur = x.length / R.rate; if (Pm.posisi >= dur - 0.05) Pm.posisi = 0;
+  if (Pm.posisi >= x.length / R.rate - 0.05) Pm.posisi = 0;
   Pm.src = Pm.ctx.createBufferSource(); Pm.src.buffer = b; Pm.src.connect(Pm.ctx.destination);
   Pm.src.onended = () => { if (Pm.main) { Pm.main = false; Pm.posisi = 0; aturTombol(); gambarGelombang(); } };
   Pm.mulaiCtx = Pm.ctx.currentTime; Pm.mulaiPos = Pm.posisi; Pm.src.start(0, Pm.posisi); Pm.main = true;
+  toast(t("memutarKe") + ": " + (M.labelOutput || "Windows"));
   aturTombol();
 }
 function hentikanPutar(simpanPosisi = true) {
@@ -494,30 +470,39 @@ function hentikanPutar(simpanPosisi = true) {
   try { Pm.src.onended = null; Pm.src.stop(); } catch {}
   Pm.posisi = simpanPosisi ? pos : 0; aturTombol(); gambarGelombang();
 }
-// Garis posisi bergerak selama diputar
 setInterval(() => { if (Pm.main) gambarGelombang(); }, 80);
-
 $("#btnPutar").onclick = () => (Pm.main ? hentikanPutar() : putar());
-$("#btnDengar").onclick = () => { if (!R.asli) { toast("Pilih rekaman dulu.", true); return; } setLihat("studio"); putar(); };
+$("#btnDengar").onclick = () => { if (!R.asli) { toast(t("pilihDulu"), true); return; } setLihat("studio"); putar(); };
+
+// Tes suara: dua nada singkat ke speaker mode aktif
+$("#btnTesSuara").onclick = async () => {
+  await siapkanPemutar();
+  const c = Pm.ctx, mulai = c.currentTime + 0.05;
+  [[660, 0], [880, 0.22]].forEach(([f, d]) => {
+    const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f;
+    g.gain.setValueAtTime(0, mulai + d); g.gain.linearRampToValueAtTime(0.35, mulai + d + 0.02); g.gain.exponentialRampToValueAtTime(0.001, mulai + d + 0.2);
+    o.connect(g); g.connect(c.destination); o.start(mulai + d); o.stop(mulai + d + 0.22);
+  });
+  toast(t("tesSuaraKet") + ": " + (M.labelOutput || "Windows"));
+};
 
 function aturTombol() {
   const ada = !!R.asli;
-  $("#btnRekam").disabled = false;
   $("#btnPutar").disabled = M.rek || !ada;
-  $("#btnPutar").querySelector("i").className = "bi " + (Pm.main ? "bi-pause-fill" : "bi-play-fill");
+  $("#btnPutar i").className = "bi " + (Pm.main ? "bi-pause-fill" : "bi-play-fill");
   $("#btnStop").disabled = !M.rek && !Pm.main;
-  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio"].forEach((s) => ($(s).disabled = !ada || M.rek));
-  $("#pilihInput").disabled = M.rek;
+  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
+  $$("#modeAudio button").forEach((b) => (b.disabled = M.rek));
 }
 
-// ================= Studio (efek) =================
+// ================= Studio =================
 const KUNCI_FX = ["desis", "penyeimbang", "eq", "desisS", "gema", "keraskan"];
 function tampilkanEfek() {
   const e = P.efek;
   for (const k of KUNCI_FX) {
     const el = $('.fx[data-fx="' + k + '"]'), aktif = !!e[k + "Aktif"];
     el.querySelector(".sw").classList.toggle("off", !aktif); el.classList.toggle("mati", !aktif);
-    const r = el.querySelector('input[type=range]'); if (r && e[k] != null) { r.value = e[k]; isiSlider(r); }
+    const r = el.querySelector("input[type=range]"); if (r && e[k] != null) { r.value = e[k]; isiSlider(r); }
   }
   const rn = $('.fx[data-fx="nada"] input'); rn.value = e.nada || 0; isiSlider(rn);
   $("#nadaNilai").textContent = (e.nada > 0 ? "+" : "") + (e.nada || 0);
@@ -527,82 +512,49 @@ function efekBerubah() { P.preset = ""; $$("#preset button").forEach((b) => b.cl
 for (const k of KUNCI_FX) {
   const el = $('.fx[data-fx="' + k + '"]');
   el.querySelector(".sw").onclick = () => { P.efek[k + "Aktif"] = !P.efek[k + "Aktif"]; tampilkanEfek(); efekBerubah(); };
-  const r = el.querySelector('input[type=range]');
+  const r = el.querySelector("input[type=range]");
   if (r) r.addEventListener("input", () => { P.efek[k] = +r.value; if (!P.efek[k + "Aktif"]) { P.efek[k + "Aktif"] = true; tampilkanEfek(); } efekBerubah(); });
 }
 $('.fx[data-fx="nada"] input').addEventListener("input", (e) => { P.efek.nada = +e.target.value; $("#nadaNilai").textContent = (P.efek.nada > 0 ? "+" : "") + P.efek.nada; efekBerubah(); });
-$$("#preset button").forEach((b) => (b.onclick = () => {
-  P.efek = { ...dsp.PRESET[b.dataset.p], nada: P.efek.nada || 0 }; P.preset = b.dataset.p;
-  tampilkanEfek(); simpanPengaturan(); prosesUlang();
-}));
+$$("#preset button").forEach((b) => (b.onclick = () => { P.efek = { ...dsp.PRESET[b.dataset.p], nada: P.efek.nada || 0 }; P.preset = b.dataset.p; tampilkanEfek(); simpanPengaturan(); prosesUlang(); }));
 
 const prosesUlang = tundaan(async () => {
   if (!R.asli) return;
   const versi = ++R.versi;
   R.studio = null; if (R.lihat === "studio") { if (Pm.main) hentikanPutar(); gambarGelombang(); }
-  $("#btnDengar").querySelector("span").textContent = "Memproses…";
+  $("#btnDengar span").textContent = t("memproses");
   try {
     const hasil = await dsp.prosesStudio(R.asli, R.rate, P.efek, R.awal, R.akhir);
-    if (versi !== R.versi) return; // sudah ada perubahan yang lebih baru
-    R.studio = hasil;
-    if (R.lihat === "studio") gambarGelombang();
-  } catch (e) { toast("Efek gagal diproses: " + e.message, true); }
-  finally { if (versi === R.versi) $("#btnDengar").querySelector("span").textContent = "Dengar hasil"; }
+    if (versi !== R.versi) return;
+    R.studio = hasil; if (R.lihat === "studio") gambarGelombang();
+  } catch (e) { toast(t("efekGagal") + ": " + e.message, true); }
+  finally { if (versi === R.versi) $("#btnDengar span").textContent = t("dengar"); }
 }, 350);
 
 $("#btnSimpanStudio").onclick = async () => {
   if (!R.asli) return;
-  if (!R.studio) { toast("Hasil studio masih diproses, tunggu sebentar."); return; }
+  if (!R.studio) { toast(t("studioBelum")); return; }
   const dasar = R.nama.replace(/\s*\(Studio\)(\s*\(\d+\))?$/i, "");
-  try {
-    const j = await apiJson("rekaman/simpan?" + q({ nama: dasar + " (Studio)" }), { method: "POST", body: dsp.keWav(R.studio, R.rate) });
-    await muatDaftar(); toast("Hasil studio tersimpan: " + j.nama);
-  } catch (e) { toast("Gagal menyimpan: " + e.message, true); }
+  try { const j = await apiJson("rekaman/simpan?" + q({ nama: dasar + " (Studio)" }), { method: "POST", body: dsp.keWav(R.studio, R.rate) }); await muatDaftar(); toast(t("studioTersimpan") + ": " + j.nama); }
+  catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
 };
 
-// ================= Rapikan dengan Claude =================
-function ringkasAnalisa(h) {
-  const r = (v) => Math.round(v * 10) / 10;
-  return { durasiDetik: r(h.durasi), puncakDb: r(h.puncakDb), rataRataDb: r(h.rataDb), persenSampelPecah: r(h.persenPecah),
-    persenBagianSenyap: r(h.persenSenyap), lantaiDerauDb: r(h.lantaiDerauDb), rentangDinamikaDb: r(h.rentangDinamikaDb),
-    energiPersen: { getaranDibawah80Hz: r(h.getaran), bass80_300Hz: r(h.bass), badanSuara300_1200Hz: r(h.badan), kejelasan1_2_5kHz: r(h.kejelasan), udaraDiatas5kHz: r(h.udara) },
-    catatan: "Mono, musik dan vokal tercampur dari mixer. Rekaman bagus sebelumnya: puncak -2,7 dB, bass 27-36%, kejelasan 18-24%." };
-}
+// ================= Rapikan otomatis =================
+// Setelan efek dipilih otomatis dari hasil analisa rekaman (tanpa internet, tanpa API).
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
     desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0 };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
-  if (!R.asli || !R.analisa || R.analisa.pendek) { toast("Pilih rekaman dulu.", true); return; }
-  const tombol = $("#btnRapikan"), say = $("#claudeSay");
-  tombol.disabled = true; tombol.querySelector("span").textContent = "Claude sedang menyimak…";
-  say.classList.remove("galat");
-  try {
-    const { kunci } = await apiJson("kunci-claude");
-    let s;
-    if (!kunci) {
-      s = dsp.setelanOtomatis(R.analisa);
-      say.innerHTML = '<i class="bi bi-check2-circle"></i> ' + esc(s.pesan) + " <i>(Atur kunci API Claude untuk saran langsung dari Claude.)</i>";
-    } else {
-      const claude = await import("./vendor/claude.js");
-      try { s = await claude.mintaSaranClaude(kunci, ringkasAnalisa(R.analisa)); }
-      catch (e) { throw new Error(claude.pesanGalat(e)); }
-      say.innerHTML = '<i class="bi bi-check2-circle"></i> "' + esc(s.pesan) + '"';
-    }
-    terapkanSetelan(s); setLihat("studio");
-  } catch (e) {
-    say.classList.add("galat"); say.innerHTML = '<i class="bi bi-exclamation-circle"></i> ' + esc(e.message);
-  } finally { tombol.disabled = false; tombol.querySelector("span").textContent = "Rapikan sekarang"; }
-};
-$("#btnKunci").onclick = async () => {
-  let ada = false; try { ada = !!(await apiJson("kunci-claude")).kunci; } catch {}
-  const k = await dialog({ judul: "Kunci API Claude", sandi: true, input: "", ok: "Simpan",
-    teks: (ada ? "Kunci sudah tersimpan. Isi untuk mengganti, atau kosongkan lalu Simpan untuk menghapus. " : "") +
-      "Buat kunci di platform.claude.com (menu API keys). Kunci disimpan terenkripsi di laptop ini. Yang dikirim ke Claude hanya angka hasil analisa, bukan suara Anda." });
-  if (k === null) return;
-  try { await api("kunci-claude", { method: "POST", body: k.trim() }); toast(k.trim() ? "Kunci Claude tersimpan" : "Kunci Claude dihapus"); }
-  catch (e) { toast(e.message, true); }
+  if (!R.asli || !R.analisa || R.analisa.pendek) { toast(t("pilihDulu"), true); return; }
+  const b = $("#btnRapikan"); b.classList.remove("baru"); b.disabled = true; $("#btnRapikan span").textContent = t("rapikanOtoProses");
+  const s = dsp.setelanOtomatis(R.analisa);
+  terapkanSetelan(s); setLihat("studio");
+  // tunggu hasil studio selesai diproses
+  for (let i = 0; i < 100 && !R.studio; i++) await tunggu(100);
+  b.disabled = false; $("#btnRapikan span").textContent = t("rapikanOto");
+  toast(t("dirapikan") + ". " + s.pesan.replace(/^Setelan otomatis:\s*/i, ""));
 };
 
 // ================= Analisa =================
@@ -610,8 +562,8 @@ function tampilkanAnalisa() {
   const h = R.analisa, set = (id, nilai, ket, ok) => { $(id).textContent = nilai; const em = $(id + "Ket"); em.innerHTML = ket ? '<i class="bi ' + (ok ? "bi-check2" : "bi-exclamation") + '"></i>' + esc(ket) : ""; em.style.color = ok ? "" : "var(--warn)"; };
   if (!h || h.pendek) {
     ["#stPecah", "#stSenyap", "#stBass", "#stJelas"].forEach((id) => set(id, "–", "", true));
-    $("#bands").innerHTML = ""; $("#tip div").textContent = h ? "Rekaman terlalu pendek untuk dianalisa." : "Pilih rekaman untuk melihat analisa.";
-    return;
+    $("#bands").innerHTML = ""; $("#tip").style.background = ""; $("#tip").style.borderColor = "";
+    $("#tip div").textContent = t("pilihUntukAnalisa"); return;
   }
   const n = dsp.nilaiAnalisa(h);
   set("#stPecah", ...n.kartu.pecah); set("#stSenyap", ...n.kartu.senyap); set("#stBass", ...n.kartu.bass); set("#stJelas", ...n.kartu.jelas);
@@ -621,11 +573,276 @@ function tampilkanAnalisa() {
   $("#tip div").innerHTML = n.saran.map((s, i) => (i === 0 && n.bagus ? "<b>" + esc(s) + "</b>" : "• " + esc(s))).join("<br>");
 }
 
+// ================= YouTube: pemutar + kolom seperti YouTube asli =================
+const YT = {
+  pemutar: null, siap: false, status: -1,
+  kini: null,                // { id, judul, channel, url }
+  terkait: [],               // saran "Berikutnya" dari YouTube
+  antrian: null,             // { jenis: "playlist"|"channel", judul, item: [...], i, acak, ulangi }
+  tampilan: "berikutnya",    // berikutnya | cari | channel | pustaka
+  cari: { kata: "", item: [] }, channel: null, pustaka: [], sejarah: [],
+};
+window.onYouTubeIframeAPIReady = () => { YT.siap = true; perbaruiSiap(); };
+(() => { const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api"; s.onerror = () => toast(t("ytGagal"), true); document.head.appendChild(s); })();
+
+const kartuVideo = (v, i, opsi = {}) =>
+  '<div class="vi' + (YT.kini && YT.kini.id === v.id && v.jenis !== "playlist" ? " on" : "") + '" data-i="' + i + '">' +
+  (opsi.nomor ? '<span class="no">' + (YT.kini && YT.kini.id === v.id ? '<i class="bi bi-play-fill" style="color:var(--p)"></i>' : i + 1) + "</span>" : "") +
+  '<div class="th" style="background-image:url(https://i.ytimg.com/vi/' + esc(opsi.thumb || v.id) + '/mqdefault.jpg)">' + (v.durasi ? "<small>" + esc(durasiYt(v.durasi)) + "</small>" : "") + "</div>" +
+  '<div class="t"><b>' + esc(v.judul) + "</b>" + (v.url && !opsi.tanpaChannel ? '<a class="chlink" data-ch="' + esc(v.url) + '">' + esc(v.channel) + "</a>" : "<span>" + esc(v.channel) + "</span>") + "</div>" +
+  (opsi.hapus ? '<button class="mini x" data-hapus="' + i + '" title="' + esc(t("hapus")) + '"><i class="bi bi-x-lg"></i></button>' : "") + "</div>";
+
+function pasangKlik(akar, item, aksi) {
+  akar.querySelectorAll(".vi").forEach((el) => (el.onclick = (e) => {
+    if (e.target.closest("[data-ch]")) { bukaChannel(e.target.closest("[data-ch]").dataset.ch); return; }
+    if (e.target.closest("[data-hapus]")) return;
+    aksi(item[+el.dataset.i], +el.dataset.i);
+  }));
+}
+
+function kepala(judulHtml, kanan = "", kembali = true) {
+  return '<div class="kolom-h"><div class="kiri">' + (kembali ? '<button class="mini" data-kembali title="' + esc(t("kembali")) + '"><i class="bi bi-arrow-left"></i></button>' : "") + judulHtml + "</div>" + kanan + "</div>";
+}
+
+/** Gambar kolom kanan sesuai tampilan aktif. */
+function tampilkanKolom() {
+  const k = $("#kolom");
+  if (YT.tampilan === "cari") {
+    k.innerHTML = kepala("<b>" + esc(t("hasilUntuk")) + " \"" + esc(YT.cari.kata) + "\"</b>") + '<div class="daftar-yt">' +
+      (YT.cari.item === null ? '<div class="info">' + esc(t("memuat")) + "</div>" : YT.cari.item.length ? YT.cari.item.map((v, i) => kartuVideo(v, i)).join("") : '<div class="info">' + esc(t("tidakAdaHasil")) + "</div>") + "</div>";
+    if (YT.cari.item) pasangKlik(k, YT.cari.item, (v) => { YT.antrian = null; putarVideo(v); });
+  } else if (YT.tampilan === "channel") {
+    const c = YT.channel || {};
+    const tabs = '<div class="seg" style="flex:none"><button data-tab-ch="videos" class="' + (c.tab === "videos" ? "on" : "") + '">' + esc(t("video")) + '</button><button data-tab-ch="playlists" class="' + (c.tab === "playlists" ? "on" : "") + '">' + esc(t("playlist")) + "</button></div>";
+    k.innerHTML = kepala("<b>" + esc(c.nama || t("memuat")) + "</b>") +
+      '<div class="chkepala">' + (c.foto ? '<img src="' + esc(c.foto) + '" alt="">' : "") + '<div style="flex:1">' + tabs + "</div>" +
+      (c.tab === "videos" && c.item && c.item.length ? '<button class="btn primary" id="putarSemuaCh"><i class="bi bi-play-fill"></i>' + esc(t("putarSemua")) + "</button>" : "") + "</div>" +
+      '<div class="daftar-yt">' + (!c.item ? '<div class="info">' + esc(t("memuat")) + "</div>" : c.item.length ? c.item.map((v, i) => kartuVideo(v, i, { tanpaChannel: true, thumb: v.jenis === "playlist" ? null : v.id })).join("") : '<div class="info">' + esc(t("tidakAdaHasil")) + "</div>") + "</div>";
+    k.querySelectorAll("[data-tab-ch]").forEach((b) => (b.onclick = () => bukaChannel(c.url, b.dataset.tabCh)));
+    if ($("#putarSemuaCh")) $("#putarSemuaCh").onclick = () => mulaiAntrian({ jenis: "channel", judul: c.nama, item: c.item.filter((v) => v.jenis === "video") }, 0);
+    if (c.item) {
+      // Gambar kecil playlist channel: pakai gambar video pertama yang tersedia dari YouTube
+      k.querySelectorAll(".vi").forEach((el) => { const v = c.item[+el.dataset.i]; if (v.jenis === "playlist") el.querySelector(".th").style.backgroundImage = "linear-gradient(135deg, rgba(var(--p-rgb),.8), rgba(0,0,0,.6))"; });
+      pasangKlik(k, c.item, (v, i) => (v.jenis === "playlist" ? bukaPlaylist({ id: v.id, judul: v.judul }) : mulaiAntrian({ jenis: "channel", judul: c.nama, item: c.item.filter((x) => x.jenis === "video") }, c.item.filter((x) => x.jenis === "video").indexOf(v))));
+    }
+  } else if (YT.tampilan === "pustaka") {
+    k.innerHTML = kepala("<b>" + esc(t("playlistSaya")) + "</b>") +
+      '<form class="tempel" id="formTempel"><input id="linkTempel" placeholder="' + esc(t("tempelLink")) + '"><button class="btn primary" type="submit"><i class="bi bi-plus-lg"></i>' + esc(t("tambah")) + "</button></form>" +
+      '<div class="daftar-yt">' + (YT.pustaka.length ? YT.pustaka.map((p, i) =>
+        '<div class="vi" data-i="' + i + '"><div class="th" style="background-image:url(https://i.ytimg.com/vi/' + esc(p.thumb || "") + '/mqdefault.jpg)">' + (p.jumlah ? "<small>" + esc(p.jumlah) + "</small>" : "") + '</div><div class="t"><b>' + esc(p.judul) + "</b><span>" + esc(p.dari || "") + '</span></div><button class="mini x" data-hapus="' + i + '"><i class="bi bi-x-lg"></i></button></div>').join("")
+        : '<div class="info">' + esc(t("pustakaKosong")) + "</div>") + "</div>";
+    $("#formTempel").onsubmit = (e) => { e.preventDefault(); tambahPustaka($("#linkTempel").value.trim()); };
+    pasangKlik(k, YT.pustaka, (p) => bukaPlaylist(p));
+    k.querySelectorAll("[data-hapus]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); YT.pustaka.splice(+b.dataset.hapus, 1); simpanPustaka(); tampilkanKolom(); }));
+  } else {
+    // Berikutnya (seperti YouTube): kotak playlist/antrian di atas, lalu saran YouTube
+    const a = YT.antrian;
+    const kotak = a ? '<div class="plbox"><div class="kepala"><i class="bi bi-music-note-list" style="color:var(--p)"></i><div style="min-width:0"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.judul) + "</b><span>" +
+      esc(t(a.jenis === "channel" ? "video" : "playlist")) + " · " + (a.i + 1) + " / " + a.item.length + '</span></div><div class="aksi">' +
+      '<button class="mini' + (a.ulangi ? " on" : "") + '" id="plUlangi" title="' + esc(t("ulangi")) + '"><i class="bi bi-repeat"></i></button>' +
+      '<button class="mini' + (a.acak ? " on" : "") + '" id="plAcak" title="' + esc(t("acak")) + '"><i class="bi bi-shuffle"></i></button>' +
+      '<button class="mini" id="plTutup" title="' + esc(t("tutupPlaylist")) + '"><i class="bi bi-x-lg"></i></button></div></div><div class="isi" id="plIsi">' +
+      a.item.map((v, i) => kartuVideo(v, i, { nomor: true, tanpaChannel: true })).join("") + "</div></div>" : "";
+    k.innerHTML = kotak + kepala("<b>" + esc(t("berikutnya")) + "</b>", '<span class="autoplay"><span>' + esc(t("autoplay")) + '</span><span class="sw' + (P.autoplay ? "" : " off") + '" id="swAutoplayKolom"></span></span>', false) +
+      '<div class="daftar-yt" id="dTerkait">' + (YT.kini ? (YT.terkait === null ? '<div class="info">' + esc(t("memuat")) + "</div>" : YT.terkait.map((v, i) => kartuVideo(v, i)).join("")) : '<div class="info">' + esc(t("kosongKet")) + "</div>") + "</div>";
+    if (a) {
+      pasangKlik($("#plIsi"), a.item, (v, i) => mulaiAntrian(a, i));
+      $("#plUlangi").onclick = () => { a.ulangi = !a.ulangi; tampilkanKolom(); };
+      $("#plAcak").onclick = () => { a.acak = !a.acak; tampilkanKolom(); };
+      $("#plTutup").onclick = () => { YT.antrian = null; tampilkanKolom(); };
+      const aktif = $("#plIsi .vi.on"); if (aktif) aktif.scrollIntoView({ block: "nearest" });
+    }
+    if (YT.terkait) pasangKlik($("#dTerkait"), YT.terkait, (v) => { YT.antrian = null; putarVideo(v); });
+    $("#swAutoplayKolom").onclick = () => { P.autoplay = !P.autoplay; terapkanTema(); tampilkanKolom(); simpanPengaturan(); };
+  }
+  k.querySelectorAll("[data-kembali]").forEach((b) => (b.onclick = () => { YT.tampilan = "berikutnya"; tampilkanKolom(); }));
+}
+
+// Cari
+$("#cari").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kata = $("#kata").value.trim(); if (!kata) return;
+  YT.cari = { kata, item: null }; YT.tampilan = "cari"; tampilkanKolom();
+  try { YT.cari.item = await apiJson("cari?" + q({ q: kata })); } catch (err) { YT.cari.item = []; toast(err.message, true); }
+  if (YT.tampilan === "cari") tampilkanKolom();
+  // Link video ditempel: langsung putar
+  if (YT.cari.item.length === 1 && YT.cari.item[0].judul === "Video dari link") { YT.antrian = null; putarVideo(YT.cari.item[0]); }
+});
+
+// Playlist saya (tersimpan di laptop)
+async function muatPustaka() { try { const j = await apiJson("perpustakaan"); YT.pustaka = j.playlist || []; } catch { YT.pustaka = []; } }
+const simpanPustaka = () => api("perpustakaan", { method: "POST", body: JSON.stringify({ playlist: YT.pustaka }) }).catch(() => {});
+$("#btnPustaka").onclick = () => { YT.tampilan = YT.tampilan === "pustaka" ? "berikutnya" : "pustaka"; tampilkanKolom(); };
+
+async function tambahPustaka(link) {
+  if (!link) return;
+  try {
+    let tambah = 0;
+    const masuk = (p) => { if (YT.pustaka.some((x) => x.id === p.id)) return; YT.pustaka.push(p); tambah++; };
+    if (/[?&]list=/.test(link)) {
+      const j = await apiJson("playlist-yt?" + q({ link }));
+      masuk({ id: j.id, judul: j.judul, jumlah: j.video.length + " " + t("lagu"), thumb: j.video[0]?.id || "", dari: "YouTube" });
+    } else {
+      const c = await apiJson("channel?" + q({ url: link, tab: "playlists" }));
+      for (const p of c.item) {
+        // ambil satu video pertama untuk gambar kecil (tanpa memuat seluruh playlist)
+        masuk({ id: p.id, judul: p.judul, jumlah: p.durasi || "", thumb: "", dari: t("dariChannel") + " " + c.nama });
+      }
+    }
+    simpanPustaka(); tampilkanKolom(); toast(tambah ? t("playlistDitambah") + " (" + tambah + ")" : t("playlistAda"));
+  } catch (e) { toast(e.message, true); }
+}
+
+async function bukaPlaylist(p) {
+  try {
+    const j = await apiJson("playlist-yt?" + q({ link: p.id }));
+    const simpan = YT.pustaka.find((x) => x.id === p.id);
+    if (simpan && !simpan.thumb && j.video[0]) { simpan.thumb = j.video[0].id; simpan.jumlah = j.video.length + " " + t("lagu"); simpanPustaka(); }
+    mulaiAntrian({ jenis: "playlist", judul: j.judul, item: j.video }, 0);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function bukaChannel(url, tab = "videos") {
+  if (!url) return;
+  YT.channel = { url, tab, nama: YT.channel && YT.channel.url === url ? YT.channel.nama : "", item: null }; YT.tampilan = "channel"; tampilkanKolom();
+  try { const c = await apiJson("channel?" + q({ url, tab })); YT.channel = { ...c, tab }; }
+  catch (e) { YT.channel.item = []; toast(e.message, true); }
+  if (YT.tampilan === "channel") tampilkanKolom();
+}
+$("#ytChannel").onclick = () => { if (YT.kini && YT.kini.url) bukaChannel(YT.kini.url); };
+
+function mulaiAntrian(a, i) {
+  if (!a.item.length) return;
+  YT.antrian = { ...a, i: Math.max(0, i), acak: a.acak || false, ulangi: a.ulangi !== false };
+  YT.tampilan = "berikutnya";
+  putarVideo(YT.antrian.item[YT.antrian.i]);
+}
+
+/** Putar satu video lalu ambil "Berikutnya" dan data channel dari YouTube. */
+async function putarVideo(v) {
+  if (!v) return;
+  if (!YT.siap) { toast(t("ytBelumSiap"), true); return; }
+  if (YT.kini && YT.kini.id !== v.id) YT.sejarah.push(YT.kini);
+  YT.kini = { ...v }; YT.terkait = null;
+  if (YT.tampilan !== "channel" && YT.tampilan !== "pustaka") YT.tampilan = "berikutnya";
+  $("#ytKosong").hidden = true;
+  $("#ytJudul").removeAttribute("data-t");
+  tampilkanKini();
+  if (!YT.pemutar) {
+    YT.pemutar = new YT_API.Player("ytPlayer", {
+      videoId: v.id, playerVars: { autoplay: 1, rel: 0, playsinline: 1, origin: location.origin },
+      events: {
+        onStateChange: (e) => { YT.status = e.data; perbaruiTombolYt(); perbaruiSiap(); if (e.data === 0) laguSelesai(); },
+        onError: (e) => { if ([100, 101, 150].includes(e.data)) { toast(t("ytTidakBoleh"), true); laguBerikutnya(); } },
+      },
+    });
+  } else YT.pemutar.loadVideoById(v.id);
+  tampilkanKolom();
+  try {
+    const j = await apiJson("terkait?" + q({ id: v.id }));
+    if (YT.kini.id !== v.id) return;
+    YT.terkait = j.video;
+    if (j.judul && (!YT.kini.judul || YT.kini.judul === "Video dari link")) YT.kini.judul = j.judul;
+    if (j.channel) { YT.kini.channel = j.channel; YT.kini.url = j.url || YT.kini.url; }
+    tampilkanKini();
+  } catch { YT.terkait = []; }
+  if (YT.tampilan === "berikutnya") tampilkanKolom();
+}
+const YT_API = new Proxy({}, { get: (_, k) => window.YT[k] });
+
+function tampilkanKini() {
+  const v = YT.kini; if (!v) return;
+  $("#ytJudul").textContent = v.judul;
+  $("#ytChannel").textContent = v.channel || ""; $("#ytChannel").style.cursor = v.url ? "pointer" : "default";
+  $("#ytInfo").textContent = v.durasi ? " · " + durasiYt(v.durasi) : "";
+}
+function perbaruiTombolYt() {
+  const main = YT.status === 1 || YT.status === 3;
+  $("#ytPlay").innerHTML = '<i class="bi ' + (main ? "bi-pause-fill" : "bi-play-fill") + '"></i><span>' + esc(t(main ? "jeda" : "putar")) + "</span>";
+}
+
+/** Lagu berikutnya: dari antrian (playlist/channel) bila ada, kalau tidak dari saran YouTube. */
+function laguBerikutnya() {
+  const a = YT.antrian;
+  if (a) {
+    let i = a.acak ? Math.floor(Math.random() * a.item.length) : a.i + 1;
+    if (i >= a.item.length) { if (!a.ulangi) { YT.antrian = null; } else i = 0; }
+    if (YT.antrian) { a.i = i; putarVideo(a.item[i]); return; }
+  }
+  if (YT.terkait && YT.terkait.length) putarVideo(YT.terkait[0]);
+}
+function laguSelesai() { if (P.autoplay) laguBerikutnya(); }
+$("#ytNext").onclick = laguBerikutnya;
+$("#ytPrev").onclick = () => {
+  const a = YT.antrian;
+  if (a && a.i > 0) { a.i--; putarVideo(a.item[a.i]); return; }
+  const sebelum = YT.sejarah.pop(); if (sebelum) { putarVideo(sebelum); YT.sejarah.pop(); }
+};
+$("#ytPlay").onclick = () => {
+  const p = YT.pemutar;
+  if (!p) { if (YT.cari.item && YT.cari.item.length) putarVideo(YT.cari.item[0]); else $("#kata").focus(); return; }
+  if (YT.status === 1 || YT.status === 3) p.pauseVideo(); else p.playVideo();
+};
+
+
+// ================= Update otomatis (GitHub Releases) =================
+let infoUpdate = null;
+async function cekUpdate(manual = false) {
+  try {
+    const j = await apiJson("update/cek");
+    $("#versiApp").textContent = j.versi;
+    infoUpdate = j.ada ? j : null;
+    $("#infoUpdate").hidden = !j.ada;
+    $("#btnPengaturan").classList.toggle("ada-update", !!j.ada);
+    if (j.ada) {
+      $("#judulUpdate").textContent = t("versiBaru") + ": " + j.terbaru;
+      $("#catatanUpdate").textContent = j.catatan || j.judul || "";
+      if (!manual) toast(t("versiBaru") + ": " + j.terbaru + " · " + t("pengaturan"));
+    } else if (manual) toast(j.galat || t("sudahTerbaru"), !!j.galat);
+  } catch (e) { if (manual) toast(e.message, true); }
+}
+$("#btnCekUpdate").onclick = () => cekUpdate(true);
+$("#btnPasangUpdate").onclick = async () => {
+  if (M.rek) return;
+  const layar = document.createElement("div"); layar.className = "layar-update";
+  layar.innerHTML = '<div class="glass"><div class="putar"></div><b></b><span></span></div>';
+  layar.querySelector("b").textContent = t("memperbarui") + (infoUpdate ? " (" + infoUpdate.terbaru + ")" : "");
+  layar.querySelector("span").textContent = t("memperbaruiKet");
+  document.body.appendChild(layar);
+  try {
+    const lama = (await apiJson("versi")).versi;
+    const j = await apiJson("update/pasang", { method: "POST" });
+    if (!j.ok) throw new Error(j.galat || t("updateGagal"));
+    // Tunggu server versi baru menyala, lalu muat ulang jendela ini
+    for (let n = 0; n < 120; n++) {
+      await tunggu(1000);
+      try { const v = await apiJson("versi"); if (v.versi !== lama) { location.reload(); return; } } catch {}
+    }
+    location.reload();
+  } catch (e) { layar.remove(); toast(t("updateGagal") + ": " + e.message, true); }
+};
+
+// ================= Teks yang bergantung bahasa =================
+function segarkanTeks() {
+  terapkan();
+  if (!YT.kini) $("#ytJudul").textContent = t("belumLagu");
+  if (!R.nama) $("#namaRekaman").textContent = t("belumDipilih"); else $("#namaRekaman").textContent = R.nama;
+  if (!M.rek) { $("#timerKet").textContent = t("tekanRekam"); $("#recPill span").textContent = t("siap"); }
+  perbaruiTombolYt(); perbaruiRingkas(); perbaruiSiap(); tampilkanKolom(); muatDaftar(); tampilkanAnalisa(); gambarGelombang();
+  $("#btnDengar span").textContent = t("dengar");
+  if (laci.classList.contains("buka")) isiPengaturanAudio();
+}
+
 // ================= Mulai =================
 (async function mulai() {
-  try { Object.assign(P, await apiJson("pengaturan")); P.efek = { ...EFEK_AWAL, ...(P.efek || {}) }; } catch {}
-  terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); gambarGelombang();
-  await muatDaftar();
-  await isiPerangkat();
+  try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "" }, laptop: { input: "", output: "" }, ...(s.profil || {}) }; } catch {}
+  if (!["rumah", "laptop"].includes(P.modeAudio)) P.modeAudio = "rumah";
+  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa();
+  segarkanTeks();
+  await Promise.all([muatDaftar(), muatPustaka(), muatAudio()]);
+  tampilkanKolom();
+  // Langsung tersambung: aktifkan mode audio terakhir (Studio Rumah / Laptop)
+  await aktifkanMode(P.modeAudio, true);
   setInterval(() => api("ping").catch(() => {}), 20000); api("ping").catch(() => {});
+  cekUpdate(false);
 })();
