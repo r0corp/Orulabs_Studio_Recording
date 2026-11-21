@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public const int Port = 47821;
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.1.0";
+        public const string Versi = "1.1.1";
         public static readonly string Alamat = "http://localhost:" + Port + "/";
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;

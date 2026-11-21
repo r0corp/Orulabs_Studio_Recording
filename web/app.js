@@ -644,7 +644,7 @@ function tampilkanKolom() {
       '<button class="mini" id="plTutup" title="' + esc(t("tutupPlaylist")) + '"><i class="bi bi-x-lg"></i></button></div></div><div class="isi" id="plIsi">' +
       a.item.map((v, i) => kartuVideo(v, i, { nomor: true, tanpaChannel: true })).join("") + "</div></div>" : "";
     k.innerHTML = kotak + kepala("<b>" + esc(t("berikutnya")) + "</b>", '<span class="autoplay"><span>' + esc(t("autoplay")) + '</span><span class="sw' + (P.autoplay ? "" : " off") + '" id="swAutoplayKolom"></span></span>', false) +
-      '<div class="daftar-yt" id="dTerkait">' + (YT.kini ? (YT.terkait === null ? '<div class="info">' + esc(t("memuat")) + "</div>" : YT.terkait.map((v, i) => kartuVideo(v, i)).join("")) : '<div class="info">' + esc(t("kosongKet")) + "</div>") + "</div>";
+      '<div class="daftar-yt" id="dTerkait">' + (YT.kini ? (YT.terkait === null ? '<div class="info">' + esc(t("memuat")) + "</div>" : YT.terkait.map((v, i) => kartuVideo(v, i)).join("")) : '<div class="info">' + esc(t("berikutnyaKosong")) + "</div>") + "</div>";
     if (a) {
       pasangKlik($("#plIsi"), a.item, (v, i) => mulaiAntrian(a, i));
       $("#plUlangi").onclick = () => { a.ulangi = !a.ulangi; tampilkanKolom(); };
