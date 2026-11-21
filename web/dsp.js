@@ -142,8 +142,66 @@ export function nilaiAnalisa(h) {
   return r;
 }
 
-/** Setelan efek otomatis dari hasil analisa (dipakai bila kunci Claude belum diatur). */
-export function setelanOtomatis(h) {
+// Pita oktaf dan kurva keseimbangan nada mix studio (energi per oktaf relatif terhadap 1 kHz, dB).
+export const PITA = [63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+const KURVA_STUDIO = [3, 3, 1.5, 0.5, 0, -2, -5, -10, -20];
+// batas koreksi per pita [potong maks, angkat maks]: bass dalam dan 16 kHz tidak boleh diangkat banyak (isinya dengung/desis)
+const BATAS_EQ = [[-4, 1], [-4, 2], [-4, 3], [-4, 3], [-4, 4], [-4, 4], [-4, 4], [-3, 3], [-3, 1.5]];
+
+/** Energi rekaman per pita oktaf (dB, relatif 1 kHz). Bagian senyap dilewati. */
+export function profilPita(x, rate) {
+  const F = 4096, hop = F * 2, jendela = new Float32Array(F), daya = new Float64Array(PITA.length), lv = [];
+  for (let i = 0; i < F; i++) jendela[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / F);
+  for (let w = 0; w + F <= x.length; w += hop) { let t = 0; for (let i = w; i < w + F; i++) t += x[i] * x[i]; lv.push(t / F); }
+  if (lv.length < 4) return null;
+  const urut = lv.slice().sort((a, b) => a - b), ambang = urut[Math.floor(urut.length / 2)] * 0.01; // 20 dB di bawah median
+  const re = new Float64Array(F), im = new Float64Array(F);
+  for (let w = 0, j = 0; w + F <= x.length; w += hop, j++) {
+    if (lv[j] < ambang) continue;
+    for (let i = 0; i < F; i++) { re[i] = x[w + i] * jendela[i]; im[i] = 0; }
+    fft(re, im);
+    PITA.forEach((f, b) => {
+      const a = Math.max(1, Math.floor(f / Math.SQRT2 * F / rate)), z = Math.min(F / 2, Math.ceil(f * Math.SQRT2 * F / rate));
+      for (let k = a; k < z; k++) daya[b] += re[k] * re[k] + im[k] * im[k];
+    });
+  }
+  const acuan = 10 * Math.log10(daya[4] + 1e-20);
+  return PITA.map((f, b) => 10 * Math.log10(daya[b] + 1e-20) - acuan);
+}
+
+/** Koreksi EQ (dB per pita) supaya rekaman mendekati kurva mix studio. Hanya 60% dari selisih, supaya tetap natural. */
+export function koreksiEq(pita) {
+  if (!pita) return null;
+  let c = pita.map((v, b) => KURVA_STUDIO[b] - v);
+  const tengah = (c[2] + c[3] + c[4] + c[5] + c[6]) / 5; // jaga level keseluruhan
+  c = c.map((v, b) => Math.max(BATAS_EQ[b][0], Math.min(BATAS_EQ[b][1], (v - tengah) * 0.6)));
+  return c.map((g) => Math.round(g * 2) / 2);
+}
+
+/** Setelan efek otomatis dari hasil analisa (+ profil pita bila ada): sentuhan studio yang natural, bukan efek berlebihan. */
+export function setelanOtomatis(h, pita) {
+  const kor = koreksiEq(pita);
+  if (kor) {
+    const sisaAtas = pita[7] + kor[7] - KURVA_STUDIO[7]; // nada tinggi masih kurang setelah EQ?
+    const s = { desisAktif: h.lantaiDerauDb > -62 && h.lantaiDerauDb < -45, desis: 30,
+      penyeimbangAktif: true, penyeimbang: h.rentangDinamikaDb > 22 ? 45 : 30,
+      eqAktif: true, eq: 100, eqCocok: kor,
+      desisSAktif: pita[7] + kor[7] > KURVA_STUDIO[7] + 3, gemaAktif: true, gema: 12, keraskanAktif: true, nada: 0,
+      kilauAktif: sisaAtas < -8, kilau: 25, potongBass: 0 };
+    const alasan = [], angkat = (b) => kor[b] >= 1.5, kurang = (b) => kor[b] <= -1.5;
+    if (angkat(5) || angkat(6)) alasan.push("vokal agak mendem, saya angkat bagian 2–4 kHz supaya lebih jelas");
+    if (kurang(2) || kurang(3)) alasan.push("suara agak berdengung/tebal, saya kurangi bagian 250–500 Hz");
+    if (kurang(0) || kurang(1)) alasan.push("bass terlalu berat, saya rapikan");
+    if (angkat(7)) alasan.push("saya tambah sedikit udara di nada tinggi");
+    if (s.kilauAktif) alasan.push("nada tinggi rekaman terpotong, saya beri sedikit kilau");
+    if (s.desisAktif) alasan.push("desis di bagian sepi saya bersihkan");
+    s.pesan = "Setelan otomatis: " + (alasan.length ? alasan.join(", ") + "." : "keseimbangan nada sudah pas, saya beri sentuhan studio ringan.");
+    return s;
+  }
+  return setelanOtomatisLama(h);
+}
+
+function setelanOtomatisLama(h) {
   // Desis hanya terdengar di bagian sepi: lantai derau -62..-40 dB. Di atas itu musiknya tidak pernah sepi.
   const s = { desisAktif: h.lantaiDerauDb > -62 && h.lantaiDerauDb < -40, desis: h.lantaiDerauDb > -50 ? 60 : 40,
     penyeimbangAktif: true, penyeimbang: h.rentangDinamikaDb > 22 ? 60 : 35,
@@ -192,8 +250,16 @@ function gerbangDerau(x, rate, jumlah) {
 
 /** Respons impuls gema ruang buatan (derau yang meluruh). */
 function responsGema(ctx, rate, detik) {
-  const n = Math.floor(rate * detik), ir = ctx.createBuffer(1, n, rate), d = ir.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * (i < rate * 0.01 ? i / (rate * 0.01) : 1);
+  // detik = waktu luruh 60 dB. Jeda awal 20 ms, pantulan awal jarang lalu ekor rapat yang makin redup nada tingginya.
+  const n = Math.floor(rate * detik), ir = ctx.createBuffer(1, n, rate), d = ir.getChannelData(0), jeda = Math.floor(rate * 0.02);
+  let lp = 0;
+  for (let i = jeda; i < n; i++) {
+    const t = (i - jeda) / rate, luruh = Math.exp(-6.9 * t / detik);
+    const redam = Math.min(0.92, 0.25 + t * 1.2); // makin lama makin gelap, seperti ruangan sungguhan
+    lp = lp * redam + (Math.random() * 2 - 1) * (1 - redam);
+    const awal = t < 0.06 ? (Math.random() < 0.02 ? 3 : 0.3) : 1;
+    d[i] = lp * luruh * awal;
+  }
   return ir;
 }
 
@@ -205,23 +271,33 @@ async function rantaiWebAudio(x, rate, s) {
   let simpul = src;
   const sambung = (n) => { simpul.connect(n); simpul = n; return n; };
 
-  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 70; sambung(hp);
-  if (s.eqAktif) {
+  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 60; hp.Q.value = 0.6; sambung(hp);
+  if (s.eqAktif && Array.isArray(s.eqCocok)) {
+    // EQ cocok dari Rapikan otomatis: filter lebar per oktaf, kekuatan mengikuti slider EQ
     const e = s.eq / 100;
-    const rendah = ctx.createBiquadFilter(); rendah.type = "peaking"; rendah.frequency.value = 250; rendah.Q.value = 0.9; rendah.gain.value = -6 * e; sambung(rendah);
-    const jelas = ctx.createBiquadFilter(); jelas.type = "peaking"; jelas.frequency.value = 3000; jelas.Q.value = 0.8; jelas.gain.value = 7 * e; sambung(jelas);
-    const udara = ctx.createBiquadFilter(); udara.type = "highshelf"; udara.frequency.value = 9000; udara.gain.value = 3 * e; sambung(udara);
+    PITA.forEach((f, b) => {
+      const g = s.eqCocok[b] * e; if (Math.abs(g) < 0.25) return;
+      const n = ctx.createBiquadFilter();
+      if (b === 0) { n.type = "lowshelf"; n.frequency.value = 90; } else if (b === PITA.length - 1) { n.type = "highshelf"; n.frequency.value = 11000; }
+      else { n.type = "peaking"; n.frequency.value = f; n.Q.value = 1.0; }
+      n.gain.value = g; sambung(n);
+    });
+  } else if (s.eqAktif) {
+    const e = s.eq / 100;
+    const rendah = ctx.createBiquadFilter(); rendah.type = "peaking"; rendah.frequency.value = 250; rendah.Q.value = 0.7; rendah.gain.value = -4 * e; sambung(rendah);
+    const jelas = ctx.createBiquadFilter(); jelas.type = "peaking"; jelas.frequency.value = 2800; jelas.Q.value = 0.7; jelas.gain.value = 4.5 * e; sambung(jelas);
+    const udara = ctx.createBiquadFilter(); udara.type = "highshelf"; udara.frequency.value = 10000; udara.gain.value = 2 * e; sambung(udara);
   }
   if (s.kilauAktif && s.kilau > 0) {
     // Kilau vokal (exciter): membangun kembali nada tinggi yang hilang (misalnya converter yang terpotong di 8 kHz)
     const atas = ctx.createBiquadFilter(); atas.type = "highpass"; atas.frequency.value = 2500; atas.Q.value = 0.7;
-    const dorong = ctx.createGain(); dorong.gain.value = 6;
+    const dorong = ctx.createGain(); dorong.gain.value = 3;
     const jenuh = ctx.createWaveShaper(); const kurva = new Float32Array(2048);
-    for (let i = 0; i < kurva.length; i++) { const v = (i / (kurva.length - 1)) * 2 - 1; kurva[i] = Math.tanh(v * 2.5); }
+    for (let i = 0; i < kurva.length; i++) { const v = (i / (kurva.length - 1)) * 2 - 1; kurva[i] = Math.tanh(v * 1.5); }
     jenuh.curve = kurva; jenuh.oversample = "4x";
     const kilap = ctx.createBiquadFilter(); kilap.type = "highpass"; kilap.frequency.value = 6000; kilap.Q.value = 0.7;
     const kilap2 = ctx.createBiquadFilter(); kilap2.type = "highpass"; kilap2.frequency.value = 6000; kilap2.Q.value = 0.7;
-    const campur = ctx.createGain(); campur.gain.value = 0.4 * s.kilau / 100;
+    const campur = ctx.createGain(); campur.gain.value = 0.25 * s.kilau / 100;
     const jumlah = ctx.createGain(); jumlah.gain.value = 1;
     simpul.connect(jumlah);
     simpul.connect(atas); atas.connect(dorong); dorong.connect(jenuh); jenuh.connect(kilap); kilap.connect(kilap2); kilap2.connect(campur); campur.connect(jumlah);
@@ -232,18 +308,22 @@ async function rantaiWebAudio(x, rate, s) {
     const lumpur = ctx.createBiquadFilter(); lumpur.type = "peaking"; lumpur.frequency.value = 180; lumpur.Q.value = 0.8; lumpur.gain.value = -7 * pb; sambung(lumpur);
     const dentum = ctx.createBiquadFilter(); dentum.type = "lowshelf"; dentum.frequency.value = 110; dentum.gain.value = -4 * pb; sambung(dentum);
   }
-  if (s.desisSAktif) { const ds = ctx.createBiquadFilter(); ds.type = "peaking"; ds.frequency.value = 6500; ds.Q.value = 2; ds.gain.value = -6; sambung(ds); }
+  if (s.desisSAktif) { const ds = ctx.createBiquadFilter(); ds.type = "peaking"; ds.frequency.value = 6500; ds.Q.value = 2; ds.gain.value = -4; sambung(ds); }
   if (s.penyeimbangAktif) {
     const c = s.penyeimbang / 100, k = ctx.createDynamicsCompressor();
-    k.threshold.value = -12 - 20 * c; k.ratio.value = 2 + 4 * c; k.knee.value = 8; k.attack.value = 0.015; k.release.value = 0.35;
+    // halus seperti kompresor vokal studio: rasio kecil, knee lebar, serangan cukup lambat supaya huruf tetap hidup
+    k.threshold.value = -10 - 14 * c; k.ratio.value = 1.5 + 2.5 * c; k.knee.value = 12; k.attack.value = 0.02; k.release.value = 0.25;
     sambung(k);
   }
   const keluar = ctx.createGain(); keluar.gain.value = 1;
   if (s.gemaAktif && s.gema > 0) {
+    // gema ruang: jeda awal 20 ms, ekor dibuang bagian bass (tidak keruh) dan nada tinggi (tidak berdesis)
     const kering = ctx.createGain(), basah = ctx.createGain(), konv = ctx.createConvolver();
-    konv.buffer = responsGema(ctx, rate, 0.8 + s.gema / 100 * 1.6);
-    kering.gain.value = 1; basah.gain.value = 0.35 * s.gema / 100;
-    simpul.connect(kering); simpul.connect(konv); konv.connect(basah);
+    const bawah = ctx.createBiquadFilter(); bawah.type = "highpass"; bawah.frequency.value = 300;
+    const atasG = ctx.createBiquadFilter(); atasG.type = "lowpass"; atasG.frequency.value = 6000;
+    konv.normalize = true; konv.buffer = responsGema(ctx, rate, 0.7 + s.gema / 100 * 1.3);
+    kering.gain.value = 1; basah.gain.value = 0.3 * s.gema / 100;
+    simpul.connect(kering); simpul.connect(bawah); bawah.connect(konv); konv.connect(atasG); atasG.connect(basah);
     kering.connect(keluar); basah.connect(keluar);
   } else simpul.connect(keluar);
   keluar.connect(ctx.destination);
@@ -365,6 +445,6 @@ export async function prosesStudio(x, rate, s, awal = 0, akhir = 1) {
   if (s.desisAktif && s.desis > 0) y = gerbangDerau(y, rate, s.desis / 100);
   if (s.nada) y = geserNada(y, s.nada);
   y = await rantaiWebAudio(y, rate, s);
-  y = s.keraskanAktif ? keraskan(y, rate) : amankan(y);
+  y = s.keraskanAktif ? keraskan(y, rate, -16, 4) : amankan(y);
   return y;
 }

@@ -164,7 +164,7 @@ async function aktifkanMode(mode, diam = false) {
   const adaIn = AUDIO.input.includes(prof.input), adaOut = AUDIO.output.includes(prof.output);
   if (adaOut) await api("audio?" + q({ arah: "output", nama: prof.output }), { method: "POST" }).catch(() => {});
   if (adaIn) await api("audio?" + q({ arah: "input", nama: prof.input }), { method: "POST" }).catch(() => {});
-  if (adaIn) await api("volume?" + q({ nama: prof.input, nilai: mode === "rumah" ? 90 : 80 }), { method: "POST" }).catch(() => {});
+  if (adaIn) await api("volume?" + q({ nama: prof.input, nilai: mode === "rumah" ? 100 : 80 }), { method: "POST" }).catch(() => {});
   await isiPerangkatBrowser();
   isiPengaturanAudio(); perbaruiRingkas(); perbaruiSiap();
   if (!diam) {
@@ -651,13 +651,13 @@ $("#btnSimpanStudio").onclick = async () => {
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
     desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0,
-    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0 };
+    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0, eqCocok: s.eqCocok || null };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
   if (!R.asli || !R.analisa || R.analisa.pendek) { toast(t("pilihDulu"), true); return; }
   const b = $("#btnRapikan"); b.classList.remove("baru"); b.disabled = true; $("#btnRapikan span").textContent = t("rapikanOtoProses");
-  const s = dsp.setelanOtomatis(R.analisa);
+  const s = dsp.setelanOtomatis(R.analisa, dsp.profilPita(R.asli, R.rate));
   // potong otomatis bagian senyap di awal/akhir (intro sepi, iklan, video yang masih memuat)
   const bs = dsp.batasSenyap(R.asli, R.rate);
   if (bs.awal > 0 || bs.akhir < 1) { R.awal = bs.awal; R.akhir = bs.akhir; s.pesan += " " + t("dipotongSenyap"); }
