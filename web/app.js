@@ -585,6 +585,18 @@ $("#btnHapus").onclick = async () => {
 const bukaFolder = () => api("folder" + (R.nama ? "?" + q({ nama: R.nama }) : ""), { method: "POST" }).catch((e) => toast(e.message, true));
 $("#btnFolder").onclick = bukaFolder;
 $("#btnBukaFolder").onclick = bukaFolder;
+// Pindahkan folder rekaman (jendela pilih folder Windows), lalu muat ulang daftar
+$("#btnPilihFolder").onclick = async () => {
+  if (M.rek) return;
+  if (!(await dialog({ judul: t("pindahJudul"), teks: t("pindahKet"), ok: t("pindahPilih") }))) return;
+  try {
+    const j = await apiJson("folder-rekaman?pilih=1", { method: "POST" });
+    if (j.batal) return;
+    if (j.folder) $("#folderRekaman").textContent = j.folder;
+    await muatDaftar();
+    toast(j.ok ? t("pindahSelesai") + " (" + (j.pindah || 0) + " file) → " + j.folder : t("pindahGagal") + (j.galat ? ": " + j.galat : ""), !j.ok);
+  } catch (e) { toast(e.message, true); }
+};
 
 // ================= Gelombang, potong, posisi =================
 const kanvas = $("#wave"), wadah = $("#gelombang");

@@ -3,6 +3,7 @@
 // Merekam, efek studio, dan analisa dikerjakan di tampilan (browser);
 // server menangani file rekaman, pencarian YouTube, volume input, dan pengaturan.
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,15 +18,78 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.3.8";
+        public const string Versi = "1.3.9";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
         static readonly object kunciFile = new object();
 
+        /// <summary>Folder rekaman: pilihan pengguna (folder-rekaman.txt) atau bawaan Musik\Rekaman Karaoke.</summary>
         static string FolderRekaman
         {
-            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Rekaman Karaoke"); }
+            get
+            {
+                try
+                {
+                    string f = Path.Combine(FolderData, "folder-rekaman.txt");
+                    if (File.Exists(f)) { string p = File.ReadAllText(f, Encoding.UTF8).Trim(); if (p.Length > 0) return p; }
+                }
+                catch { }
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Rekaman Karaoke");
+            }
+        }
+
+        /// <summary>Pindahkan seluruh isi folder rekaman (termasuk subfolder) ke folder baru, lalu pakai folder baru.</summary>
+        static string PindahFolderRekaman(string baru)
+        {
+            baru = Path.GetFullPath(baru.Trim().TrimEnd('\\'));
+            string lama = Path.GetFullPath(FolderRekaman).TrimEnd('\\');
+            if (string.Equals(lama, baru, StringComparison.OrdinalIgnoreCase)) return "{\"ok\":true,\"folder\":" + J(baru) + ",\"pindah\":0}";
+            if (baru.StartsWith(lama + "\\", StringComparison.OrdinalIgnoreCase)) return "{\"ok\":false,\"galat\":\"Folder baru tidak boleh di dalam folder lama\"}";
+            if (RekamSuaraLaptop.Aktif) return "{\"ok\":false,\"galat\":\"Sedang merekam\"}";
+            Directory.CreateDirectory(baru);
+            int pindah = 0, gagal = 0;
+            if (Directory.Exists(lama))
+            {
+                foreach (string f in Directory.GetFiles(lama, "*", SearchOption.AllDirectories))
+                {
+                    string rel = f.Substring(lama.Length).TrimStart('\\'), tujuan = Path.Combine(baru, rel);
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(tujuan));
+                        if (File.Exists(tujuan)) { string d = Path.GetFileNameWithoutExtension(tujuan), e = Path.GetExtension(tujuan); int i = 2; while (File.Exists(tujuan)) tujuan = Path.Combine(Path.GetDirectoryName(tujuan), d + " (" + (i++) + ")" + e); }
+                        File.Move(f, tujuan); pindah++;
+                    }
+                    catch { gagal++; }
+                }
+                // hapus folder lama yang sudah kosong
+                try { if (gagal == 0) foreach (string d in Directory.GetDirectories(lama, "*", SearchOption.AllDirectories).OrderByDescending(x => x.Length)) if (Directory.GetFileSystemEntries(d).Length == 0) Directory.Delete(d); } catch { }
+                try { if (gagal == 0 && Directory.GetFileSystemEntries(lama).Length == 0) Directory.Delete(lama); } catch { }
+            }
+            Directory.CreateDirectory(FolderData);
+            File.WriteAllText(Path.Combine(FolderData, "folder-rekaman.txt"), baru, Encoding.UTF8);
+            return "{\"ok\":" + (gagal == 0 ? "true" : "false") + ",\"folder\":" + J(baru) + ",\"pindah\":" + pindah + ",\"gagal\":" + gagal + "}";
+        }
+
+        /// <summary>Jendela pilih folder Windows (dijalankan di thread STA).</summary>
+        static string PilihFolder(string awal)
+        {
+            string hasil = null;
+            var th = new System.Threading.Thread(() =>
+            {
+                using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
+                {
+                    dlg.Description = "Pilih folder untuk menyimpan rekaman"; dlg.ShowNewFolderButton = true;
+                    if (Directory.Exists(awal)) dlg.SelectedPath = awal;
+                    using (var induk = new System.Windows.Forms.Form { TopMost = true, ShowInTaskbar = false, Width = 0, Height = 0, StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen })
+                    {
+                        induk.Show(); induk.Activate();
+                        if (dlg.ShowDialog(induk) == System.Windows.Forms.DialogResult.OK) hasil = dlg.SelectedPath;
+                    }
+                }
+            });
+            th.SetApartmentState(System.Threading.ApartmentState.STA); th.Start(); th.Join();
+            return hasil;
         }
         static string FolderData
         {
@@ -335,6 +399,16 @@ namespace OrulabStudio
                         new Thread(() => { Thread.Sleep(800); Environment.Exit(0); }) { IsBackground = true }.Start();
                     }
                     return;
+                }
+
+                case "folder-rekaman":
+                {
+                    // GET: folder sekarang. POST ?ke=jalur: pindahkan isi ke jalur itu. POST ?pilih=1: buka jendela pilih folder dulu.
+                    if (req.HttpMethod != "POST") { KirimJson(res, 200, "{\"folder\":" + J(FolderRekaman) + "}"); return; }
+                    string ke = q["ke"];
+                    if (q["pilih"] == "1") { ke = PilihFolder(FolderRekaman); if (ke == null) { KirimJson(res, 200, "{\"ok\":false,\"batal\":true}"); return; } ke = Path.Combine(ke, "Rekaman Karaoke"); }
+                    if (string.IsNullOrWhiteSpace(ke)) { KirimJson(res, 400, "{\"ok\":false,\"galat\":\"Folder kosong\"}"); return; }
+                    KirimJson(res, 200, PindahFolderRekaman(ke)); return;
                 }
 
                 case "info":
