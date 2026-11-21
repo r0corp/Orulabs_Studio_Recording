@@ -520,3 +520,22 @@ export function levelAktif(x, rate, mulai = 0, akhir = x.length) {
   let s = 0, n = 0; for (const v of lv) if (v > ambang) { s += v; n++; }
   return n ? 10 * Math.log10(s / n) : -120;
 }
+
+/**
+ * Ringkasan level rekam berdasarkan puncak tiap 50 ms pada bagian yang berbunyi:
+ * ideal (% puncak di -18..-3 dB), pelan (% di bawah -18 dB), bahaya (berapa detik ada puncak di atas -3 dB).
+ */
+export function ringkasLevel(x, rate) {
+  const win = Math.floor(rate / 20), pk = [], rms = [];
+  for (let w = 0; w + win <= x.length; w += win) { let p = 0, s = 0; for (let i = w; i < w + win; i++) { const a = Math.abs(x[i]); if (a > p) p = a; s += x[i] * x[i]; } pk.push(p); rms.push(Math.sqrt(s / win)); }
+  if (pk.length < 20) return null;
+  const urut = rms.slice().sort((a, b) => b - a), ambang = (urut[Math.floor(urut.length * 0.05)] || 0) * 0.1; // 20 dB di bawah bagian terkeras
+  let n = 0, ideal = 0, pelan = 0; const detikBahaya = new Set();
+  const b3 = Math.pow(10, -3 / 20), b18 = Math.pow(10, -18 / 20);
+  pk.forEach((p, i) => {
+    if (rms[i] < ambang) return; n++;
+    if (p > b3) detikBahaya.add(Math.floor(i / 20)); else if (p >= b18) ideal++; else pelan++;
+  });
+  if (!n) return null;
+  return { ideal: Math.round(ideal / n * 100), pelan: Math.round(pelan / n * 100), bahaya: detikBahaya.size };
+}

@@ -286,13 +286,17 @@ const SEG = 30, BAR = ["#barIn", "#barVok", "#barMus"].map((id) => {
   for (let i = 0; i < SEG; i++) { const s = document.createElement("i"); el.insertBefore(s, el.querySelector(".tahan")); seg.push(s); }
   return { el, seg, tahan: el.querySelector(".tahan"), tampil: -90, puncak: -90, waktuPuncak: 0 };
 });
-const warnaSeg = (i) => (i < 20 ? "#34d399" : i < 26 ? "#fbbf24" : "#ff4d5e");
+// Zona standar rekam vokal (puncak): ideal -18..-6 dB, agak keras -6..-3 dB, bahaya di atas -3 dB, pelan di bawah -18 dB
+const zonaSeg = (i) => { const atas = -58 + 2 * i; return atas > -3 ? "bahaya" : atas > -6 ? "keras" : atas >= -18 ? "ideal" : "pelan"; };
+const WARNA_ZONA = { bahaya: "#ff4d5e", keras: "#fbbf24", ideal: "#34d399", pelan: "#2a9d78" };
+const warnaSeg = (i) => WARNA_ZONA[zonaSeg(i)];
+BAR.forEach((b) => b.seg.forEach((s, i) => s.classList.add("z-" + zonaSeg(i))));
 let bufFrek = null, bufWaktu = null, clipSampai = 0;
 function isiBar(b, dbv, kini) {
   b.tampil = Math.max(dbv, b.tampil - 1.2);
   if (b.tampil >= b.puncak || kini - b.waktuPuncak > 1500) { b.puncak = b.tampil; b.waktuPuncak = kini; }
   const n = Math.round(Math.max(0, Math.min(1, (b.tampil + 60) / 60)) * SEG);
-  b.seg.forEach((s, i) => (s.style.background = i < n ? warnaSeg(i) : ""));
+  b.seg.forEach((s, i) => { const nyala = i < n; if (s._n !== nyala) { s._n = nyala; s.style.background = nyala ? warnaSeg(i) : ""; } });
   b.tahan.style.bottom = "calc(" + Math.max(0, Math.min(1, (b.puncak + 60) / 60)) * 100 + "% - 2px)";
 }
 (function animasiMeter() {
@@ -484,6 +488,7 @@ function tampilkanRekaman(nama, data, rate) {
   $$("#daftar .item").forEach((el) => el.classList.toggle("on", el.dataset.n === nama));
   Pm.posisi = 0; setLihat("asli");
   R.analisa = dsp.analisa(data, rate); tampilkanAnalisa();
+  R.levelInfo = dsp.ringkasLevel(data, rate); tampilRingkasLevel();
   prosesUlang(); aturTombol();
   muatJalurMusik(nama);
 }
@@ -504,6 +509,20 @@ async function muatJalurMusik(nama) {
     else { P.mixVokal = 100; R.mixAuto = true; }
     tampilMix(); prosesUlang();
   } catch {}
+}
+
+/** Ringkasan level di pojok gelombang: berapa persen bagian bernyanyi di zona ideal, dan berapa kali hampir pecah. */
+function tampilRingkasLevel() {
+  const el = $("#ringkasLevel"), L = R.levelInfo;
+  if (!L) { el.hidden = true; return; }
+  let kelas = "ok", teks;
+  if (L.bahaya > 0) { kelas = "bahaya"; teks = t("lvBahaya").replace("{n}", L.bahaya); }
+  else if (L.pelan > 40) { kelas = "pelan"; teks = t("lvPelan"); }
+  else if (L.ideal >= 70) teks = t("lvIdeal").replace("{p}", L.ideal);
+  else { kelas = "pelan"; teks = t("lvCukup").replace("{p}", L.ideal); }
+  el.className = "ringkas-level " + kelas;
+  el.innerHTML = '<i class="bi ' + (kelas === "ok" ? "bi-check-circle-fill" : "bi-exclamation-circle-fill") + '"></i>' + esc(teks);
+  el.hidden = R.lihat === "studio";
 }
 
 // ================= Baris Mix =================
@@ -553,6 +572,7 @@ $("#btnBukaFolder").onclick = bukaFolder;
 
 // ================= Gelombang, potong, posisi =================
 const kanvas = $("#wave"), wadah = $("#gelombang");
+const AMBANG = { bahaya: Math.pow(10, -3 / 20), atas: Math.pow(10, -6 / 20), bawah: Math.pow(10, -18 / 20) };
 const dataTampil = () => (R.lihat === "studio" ? R.studio : R.asli);
 let cachePuncak = null;
 
@@ -577,8 +597,19 @@ function gambarGelombang() {
     const mx = cachePuncak.pk[c], bh = Math.max(2, Math.min(1, mx * 1.15) * (h - 12));
     const fr = c / kolom, diPotong = !studioView && (fr < R.awal || fr > R.akhir);
     g.globalAlpha = diPotong ? 0.18 : fr < posisi ? 1 : 0.5;
-    g.fillStyle = mx >= 0.99 ? "#ff4d5e" : grad; g.fillRect(c * 3, (h - bh) / 2, 2, bh);
+    g.fillStyle = mx >= (studioView ? 0.99 : AMBANG.bahaya) ? "#ff4d5e" : grad; g.fillRect(c * 3, (h - bh) / 2, 2, bh);
   }
+  if (!studioView) {
+    // garis ambang: merah -3 dB (batas pecah), hijau -6 dB dan -18 dB (zona ideal)
+    const tinggi = (amp) => Math.min(1, amp * 1.15) * (h - 12) / 2;
+    [[AMBANG.bahaya, "rgba(255,77,94,.85)", "−3 dB"], [AMBANG.atas, "rgba(52,211,153,.8)", "−6 dB"], [AMBANG.bawah, "rgba(52,211,153,.55)", "−18 dB"]].forEach(([amp, warna, teks]) => {
+      const dy = tinggi(amp);
+      g.strokeStyle = warna; g.lineWidth = 1; g.setLineDash([5, 4]);
+      for (const y of [h / 2 - dy, h / 2 + dy]) { g.beginPath(); g.moveTo(0, Math.round(y) + .5); g.lineTo(w, Math.round(y) + .5); g.stroke(); }
+      g.setLineDash([]); g.fillStyle = warna; g.font = "600 10px Inter, sans-serif"; g.textAlign = "right"; g.fillText(teks, w - 6, h / 2 - dy - 3);
+    });
+  }
+  $("#ringkasLevel").hidden = studioView || !R.levelInfo;
   g.globalAlpha = 1; g.fillStyle = "#fbbf24"; g.fillRect(Math.round(w * Math.min(1, posisi)), 0, 2, h);
   if (!studioView) {
     $("#hL").style.left = R.awal * 100 + "%"; $("#hR").style.left = R.akhir * 100 + "%";
