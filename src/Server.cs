@@ -1,4 +1,4 @@
-// Orulabs Studio Recording: server lokal kecil yang melayani tampilan (folder "web") di
+﻿// Orulabs Studio Recording: server lokal kecil yang melayani tampilan (folder "web") di
 // http://localhost:47821 lalu membukanya sebagai jendela aplikasi Chrome.
 // Merekam, efek studio, dan analisa dikerjakan di tampilan (browser);
 // server menangani file rekaman, pencarian YouTube, volume input, dan pengaturan.
@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.1.5";
+        public const string Versi = "1.1.6";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;

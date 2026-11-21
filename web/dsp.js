@@ -198,7 +198,7 @@ async function rantaiWebAudio(x, rate, s) {
   if (s.desisSAktif) { const ds = ctx.createBiquadFilter(); ds.type = "peaking"; ds.frequency.value = 6500; ds.Q.value = 2; ds.gain.value = -6; sambung(ds); }
   if (s.penyeimbangAktif) {
     const c = s.penyeimbang / 100, k = ctx.createDynamicsCompressor();
-    k.threshold.value = -12 - 20 * c; k.ratio.value = 2 + 4 * c; k.knee.value = 8; k.attack.value = 0.006; k.release.value = 0.16;
+    k.threshold.value = -12 - 20 * c; k.ratio.value = 2 + 4 * c; k.knee.value = 8; k.attack.value = 0.015; k.release.value = 0.35;
     sambung(k);
   }
   const keluar = ctx.createGain(); keluar.gain.value = 1;
@@ -247,25 +247,51 @@ function geserNada(x, semitone) {
   return hasil;
 }
 
-/** Keraskan setara lagu streaming lalu batasi puncak di -1 dB (limiter dengan lookahead). */
-function keraskan(x, rate, targetDb = -15) {
-  let jum = 0; for (let i = 0; i < x.length; i++) jum += x[i] * x[i];
-  const rms = Math.sqrt(jum / Math.max(1, x.length)), naik = rms > 0 ? Math.min(8, Math.pow(10, targetDb / 20) / rms) : 1;
-  const batas = Math.pow(10, -1 / 20), maju = Math.floor(rate * 0.005), lepas = Math.exp(-1 / (rate * 0.08));
-  const out = new Float32Array(x.length);
+/**
+ * Keraskan tanpa "memompa":
+ * 1) Naikkan volume secukupnya: ke target rata-rata, tapi pembatas puncak hanya boleh bekerja
+ *    paling banyak `maksTekanDb` (dulu tidak dibatasi, sehingga tiap pukulan drum volume ditekan dalam-dalam).
+ * 2) Pembatas puncak di -1 dB dengan lookahead 10 ms (gain turun pelan sebelum puncak datang)
+ *    dan lepas 400 ms (dulu 80 ms) supaya tidak terdengar naik-turun mengikuti ketukan.
+ */
+function keraskan(x, rate, targetDb = -15, maksTekanDb = 6) {
+  const n = x.length; if (!n) return new Float32Array(0);
+  let jum = 0, puncak = 0;
+  for (let i = 0; i < n; i++) { const a = Math.abs(x[i]); jum += x[i] * x[i]; if (a > puncak) puncak = a; }
+  const rms = Math.sqrt(jum / n), batas = Math.pow(10, -1 / 20);
+  if (rms <= 0 || puncak <= 0) return x.slice();
+  const naikTarget = Math.pow(10, targetDb / 20) / rms;
+  const naikMaks = (batas / puncak) * Math.pow(10, maksTekanDb / 20);
+  const naik = Math.max(0.05, Math.min(16, naikTarget, naikMaks));
+
+  // Gain yang dibutuhkan tiap sampel agar tidak melewati batas
+  const L = Math.max(1, Math.floor(rate * 0.010)), L2 = 2 * L;
+  const perlu = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const a = Math.abs(x[i]) * naik; perlu[i] = a > batas ? batas / a : 1; }
+  // Minimum bergerak ke depan (lookahead) dengan deque monoton
+  const minDepan = new Float32Array(n), dq = new Int32Array(n); let kepala = 0, ekor = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    while (ekor > kepala && perlu[dq[ekor - 1]] >= perlu[i]) ekor--;
+    dq[ekor++] = i;
+    while (dq[kepala] > i + L2) kepala++;
+    minDepan[i] = perlu[dq[kepala]];
+  }
+  // Haluskan: turun lewat rata-rata bergerak (tanpa klik), naik dengan lepas 400 ms
+  const lepas = Math.exp(-1 / (rate * 0.4)), out = new Float32Array(n);
+  let jumlahJendela = 0; const jendela = new Float32Array(L).fill(1); let idx = 0; jumlahJendela = L;
   let g = 1;
-  for (let i = 0; i < x.length; i++) {
-    // puncak yang akan datang dalam 5 ms
-    let p = 0; for (let k = i; k < Math.min(x.length, i + maju); k += 4) { const a = Math.abs(x[k] * naik); if (a > p) p = a; }
-    const target = p > batas ? batas / p : 1;
-    g = target < g ? target : target + (g - target) * lepas;
-    out[i] = Math.max(-batas, Math.min(batas, x[i] * naik * g));
+  for (let i = 0; i < n; i++) {
+    jumlahJendela += minDepan[i] - jendela[idx]; jendela[idx] = minDepan[i]; idx = (idx + 1) % L;
+    const halus = jumlahJendela / L;
+    g = halus < g ? halus : halus + (g - halus) * lepas;
+    const v = x[i] * naik * g;
+    out[i] = v > batas ? batas : v < -batas ? -batas : v;
   }
   return out;
 }
 
 /** Keraskan rekaman mentah ke level pas (rata-rata -18 dB) tanpa pecah. Dipakai "Keraskan otomatis saat merekam". */
-export function keraskanRekaman(x, rate) { return keraskan(x, rate, -18); }
+export function keraskanRekaman(x, rate) { return keraskan(x, rate, -18, 3); }
 
 /** Pastikan tidak ada yang melewati batas (dipakai bila "Keraskan akhir" mati). */
 function amankan(x) {
