@@ -495,7 +495,7 @@ async function bukaRekaman(nama) {
 
 function tampilkanRekaman(nama, data, rate) {
   Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0, asliMix: null, magicAktif: false, vokalMagic: null });
-  $("#mvStatus").hidden = true; $("#kartuNada").hidden = true; tutupMagic();
+  $("#mvStatus").hidden = true; $("#kartuNada").hidden = true; tutupMagic(); Pm.bagian = false; setTimeout(tampilDaftarPotongan, 0);
   tampilMix();
   $("#gayaRapikan").hidden = true;
   $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
@@ -638,6 +638,7 @@ function gambarGelombang() {
     });
   }
   $("#ringkasLevel").hidden = studioView || !R.levelInfo;
+  tampilPotong(studioView);
   g.globalAlpha = 1; g.fillStyle = "#fbbf24"; g.fillRect(Math.round(w * Math.min(1, posisi)), 0, 2, h);
   if (!studioView) {
     $("#hL").style.left = R.awal * 100 + "%"; $("#hR").style.left = R.akhir * 100 + "%";
@@ -740,7 +741,11 @@ function hentikanPutar(simpanPosisi = true) {
   try { Pm.src.onended = null; Pm.src.stop(); } catch {}
   Pm.posisi = simpanPosisi ? pos : 0; aturTombol(); gambarGelombang();
 }
-setInterval(() => { if (Pm.main) gambarGelombang(); }, 80);
+setInterval(() => {
+  if (!Pm.main) return;
+  if (Pm.bagian && R.asli && Pm.posisiKini >= R.akhir * (R.asli.length / R.rate)) { Pm.bagian = false; hentikanPutar(false); Pm.posisi = R.awal * (R.asli.length / R.rate); }
+  gambarGelombang();
+}, 80);
 $("#btnPutar").onclick = () => (Pm.main ? hentikanPutar() : putar());
 $("#btnDengar").onclick = () => { if (!R.asli) { toast(t("pilihDulu"), true); return; } setLihat("studio"); putar(); };
 
@@ -934,8 +939,10 @@ $("#btnWa").onclick = async () => {
   if (!R.asli) { toast(t("pilihDulu"), true); return; }
   const studio = R.lihat === "studio";
   if (studio && !R.studio) { toast(t("studioBelum")); return; }
-  const data = studio ? R.studio : dataPutar(), b = $("#btnWa");
-  const dasar = R.nama.replace(/s*(Studio)(s*(d+))?$/i, "") + (studio ? (R.magicAktif ? " (Magic Vocal)" : " (Studio)") : "");
+  const b = $("#btnWa");
+  let data = studio ? R.studio : dataPutar();
+  if (!studio && potongAktif()) { const [p0, p1] = batasPotong(); data = data.slice(p0, p1); }
+  const dasar = R.nama.replace(/\s*\(Studio\)(\s*\(\d+\))?$/i, "") + (potongAktif() ? " " + labelPotong() : "") + (studio ? (R.magicAktif ? " (Magic Vocal)" : " (Studio)") : "");
   b.disabled = true; b.classList.add("sibuk"); toast(t("waMembuat"));
   try {
     const m4a = await ekspor.keM4a(data, R.rate);
@@ -1003,6 +1010,64 @@ $("#btnImpor").onclick = () => {
     } catch (e) { toast(t("imporGagal") + ": " + e.message, true); tombol.disabled = false; tombol.textContent = t("impor"); }
   };
   document.body.appendChild(latar);
+};
+
+// ================= Potong =================
+// Bilah potong hanya muncul bila pegangan kuning ditarik (awal > 0 atau akhir < 1).
+const potongAktif = () => !!R.asli && (R.awal > 0.0005 || R.akhir < 0.9995);
+function batasPotong() { const n = R.asli.length; return [Math.max(0, Math.floor(R.awal * n)), Math.min(n, Math.ceil(R.akhir * n))]; }
+const mmss = (d) => { d = Math.max(0, Math.round(d)); return String(Math.floor(d / 60)).padStart(2, "0") + "." + String(d % 60).padStart(2, "0"); };
+function labelPotong() { const dur = R.asli.length / R.rate; return "(" + mmss(R.awal * dur) + "–" + mmss(R.akhir * dur) + ")"; }
+function tampilPotong(studioView) {
+  const ada = potongAktif(), bilah = $("#bilahPotong");
+  if (bilah.hidden === ada) bilah.hidden = !ada;
+  $("#lblAwal").hidden = $("#lblAkhir").hidden = !ada || studioView;
+  if (!ada) return;
+  const dur = R.asli.length / R.rate;
+  $("#potongWaktu").textContent = waktu(R.awal * dur) + " – " + waktu(R.akhir * dur);
+  $("#potongDurasi").textContent = Math.round((R.akhir - R.awal) * dur) + " " + t("ptDipilih");
+  $("#lblAwal").textContent = waktu(R.awal * dur); $("#lblAwal").style.left = R.awal * 100 + "%";
+  $("#lblAkhir").textContent = waktu(R.akhir * dur); $("#lblAkhir").style.left = R.akhir * 100 + "%";
+}
+/** Daftar potongan yang sudah disimpan dari rekaman ini (nama + "(mm.ss–mm.ss)"). */
+function tampilDaftarPotongan() {
+  const wadahP = $("#potonganList"); if (!R.nama) { wadahP.innerHTML = ""; return; }
+  const dasar = R.nama.replace(/\s*\(\d\d\.\d\d–\d\d\.\d\d\).*$/, "");
+  const daftar = R.daftar.filter((r) => r.nama !== R.nama && r.nama.startsWith(dasar + " (") && /\(\d\d\.\d\d–\d\d\.\d\d\)/.test(r.nama));
+  wadahP.innerHTML = daftar.slice(0, 4).map((r) => '<button data-n="' + esc(r.nama) + '"><i class="bi bi-check-circle-fill"></i>' + esc(r.nama.match(/\((\d\d\.\d\d–\d\d\.\d\d)\)/)[1]) + "</button>").join("");
+  wadahP.querySelectorAll("button").forEach((b) => (b.onclick = () => bukaRekaman(b.dataset.n)));
+}
+const posisiDetik = () => (Pm.main ? Pm.posisiKini : Pm.posisi);
+$("#ptAwal").onclick = () => { const dur = R.asli.length / R.rate; R.awal = Math.max(0, Math.min(posisiDetik() / dur, R.akhir - 1 / dur)); gambarGelombang(); prosesUlang(); };
+$("#ptAkhir").onclick = () => { const dur = R.asli.length / R.rate; R.akhir = Math.min(1, Math.max(posisiDetik() / dur, R.awal + 1 / dur)); gambarGelombang(); prosesUlang(); };
+$("#ptReset").onclick = () => { R.awal = 0; R.akhir = 1; if (Pm.main) hentikanPutar(); gambarGelombang(); prosesUlang(); };
+$("#ptPutar").onclick = () => {
+  if (Pm.main) hentikanPutar();
+  // tampilan Studio sudah berisi bagian potongan saja; tampilan Asli diputar dari awal potongan sampai akhir potongan
+  Pm.posisi = R.lihat === "studio" ? 0 : R.awal * (R.asli.length / R.rate); Pm.bagian = R.lihat !== "studio"; putar();
+};
+$("#ptSimpan").onclick = async () => {
+  if (!potongAktif()) return;
+  const [p0, p1] = batasPotong();
+  if (p1 - p0 < R.rate) { toast(t("ptTerlaluPendek"), true); return; }
+  const studio = R.lihat === "studio";
+  if (studio && !R.studio) { toast(t("studioBelum")); return; }
+  const dasar = R.nama.replace(/\s*\(Studio\)(\s*\(\d+\))?$/i, "") + " " + labelPotong() + (studio ? (R.magicAktif ? " (Magic Vocal)" : " (Studio)") : "");
+  const b = $("#ptSimpan"); b.disabled = true;
+  try {
+    // potongan Asli: vokal dipotong + fade 10 ms; jalur musik (bila ada) ikut dipotong pada waktu yang sama
+    const fade = (x) => { const f = Math.min(Math.floor(R.rate * 0.01), Math.floor(x.length / 4)); for (let i = 0; i < f; i++) { const g = i / f; x[i] *= g; x[x.length - 1 - i] *= g; } return x; };
+    const data = studio ? R.studio : fade(R.asli.slice(p0, p1));
+    const j = await apiJson("rekaman/simpan?" + q({ nama: dasar }), { method: "POST", body: dsp.keWav(data, R.rate) });
+    if (!studio && R.musik) {
+      await apiJson("rekaman/musik-simpan?" + q({ nama: j.nama }), { method: "POST", body: dsp.keWav(fade(R.musik.slice(p0, Math.min(R.musik.length, p1))), R.rate) });
+      const mx = (P.mixRekaman || {})[R.nama]; if (mx) { P.mixRekaman[j.nama] = { ...mx }; }
+    }
+    if (!studio && P.vokalSaja && P.vokalSaja[R.nama]) P.vokalSaja[j.nama] = true;
+    simpanPengaturan(); await muatDaftar(); tampilDaftarPotongan();
+    toast(t("ptTersimpan") + ": " + j.nama);
+  } catch (e) { toast(t("gagalSimpan") + ": " + e.message, true); }
+  finally { b.disabled = false; }
 };
 
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));

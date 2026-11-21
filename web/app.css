@@ -814,3 +814,19 @@ canvas { display: block; width: 100%; height: 100%; }
 .impor-jenis .tag { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; align-self: center; }
 .impor-jenis .tag.ya { color: #34d399; background: rgba(52,211,153,.14); } .impor-jenis .tag.tidak { color: var(--muted); background: var(--surface-2); }
 .modal.impor .lbl-nama { font-size: 12px; color: var(--muted); margin: 4px 0 6px; display: block; }
+
+/* ===== Potong ===== */
+.bilah-potong { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 5px 6px 5px 12px; border-radius: 10px; min-width: 0;
+  background: rgba(251,191,36,.10); border: 1px solid rgba(251,191,36,.45); font-size: 12px; animation: dd-muncul .16s ease-out; }
+.bilah-potong > i { color: #fbbf24; font-size: 15px; }
+.bilah-potong .waktu { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bilah-potong .waktu small { color: var(--muted); font-weight: 500; margin-left: 6px; }
+.bilah-potong .isi { flex: 1; min-width: 0; display: flex; gap: 5px; overflow: hidden; }
+.bilah-potong .isi button { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; }
+.bilah-potong .isi button i { color: #34d399; }
+.bilah-potong .btn { height: 28px; font-size: 11.5px; padding: 0 9px; gap: 5px; }
+.bilah-potong .btn.kuning { background: #fbbf24; border-color: #fbbf24; color: #1b1300; font-weight: 700; }
+.bilah-potong .sep2 { flex: none; width: 1px; align-self: stretch; background: rgba(251,191,36,.35); }
+.potong-label { position: absolute; top: 6px; z-index: 4; transform: translateX(-50%); padding: 2px 7px; border-radius: 6px; background: #fbbf24; color: #1b1300; font: 700 10.5px Inter, sans-serif; pointer-events: none; }
+@container (max-width: 860px) { .bilah-potong .btn span[data-t] { display: none; } .bilah-potong .btn.kuning span { display: inline; } .bilah-potong .isi { display: none; } }

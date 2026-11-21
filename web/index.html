@@ -136,7 +136,17 @@
           <button data-g="3"><b>3</b><span data-t="gaya3"></span></button>
           <em id="gayaKet"></em>
         </div>
-        <div class="wave-wrap" id="gelombang"><div class="ringkas-level" id="ringkasLevel" hidden></div>
+        <div class="bilah-potong" id="bilahPotong" hidden>
+          <i class="bi bi-scissors"></i><span class="waktu"><span id="potongWaktu"></span><small id="potongDurasi"></small></span>
+          <span class="isi" id="potonganList"></span>
+          <button class="btn" id="ptAwal" data-tip-t="tipPtAwal"><i class="bi bi-skip-start"></i><span data-t="ptAwal"></span></button>
+          <button class="btn" id="ptAkhir" data-tip-t="tipPtAkhir"><span data-t="ptAkhir"></span><i class="bi bi-skip-end"></i></button>
+          <div class="sep2"></div>
+          <button class="btn" id="ptPutar"><i class="bi bi-play-fill"></i><span data-t="ptPutar"></span></button>
+          <button class="btn" id="ptReset"><i class="bi bi-arrow-counterclockwise"></i><span data-t="ptReset"></span></button>
+          <button class="btn kuning" id="ptSimpan"><i class="bi bi-scissors"></i><span data-t="ptSimpan"></span></button>
+        </div>
+        <div class="wave-wrap" id="gelombang"><div class="potong-label" id="lblAwal" hidden></div><div class="potong-label" id="lblAkhir" hidden></div><div class="ringkas-level" id="ringkasLevel" hidden></div>
           <canvas id="wave"></canvas>
           <div class="trim l" id="trimL"></div><div class="trim r" id="trimR"></div>
           <div class="handle" id="hL"></div><div class="handle" id="hR"></div>
