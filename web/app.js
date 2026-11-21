@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 70, fokusVokal: 0, keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 100, fokusVokal: 0, mixRekaman: {}, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -499,6 +499,9 @@ async function muatJalurMusik(nama) {
     const auto = dsp.cariGeser(R.asli, R.musik, R.rate);
     // tanpa petunjuk dari rekaman: speaker kabel ±30 ms, Bluetooth ±200 ms
     R.geser = auto != null ? auto : (/C-Media|Realtek|USB/i.test(P.profil[P.modeAudio].output || "") ? 30 : 200);
+    const simpan = (P.mixRekaman || {})[nama];
+    if (simpan) { P.mixVokal = simpan.v; P.mixMusik = simpan.m; if (simpan.g != null) R.geser = simpan.g; R.mixAuto = false; }
+    else { P.mixVokal = 100; R.mixAuto = true; }
     tampilMix(); prosesUlang();
   } catch {}
 }
@@ -512,7 +515,14 @@ function tampilMix() {
   $("#sinkronNilai").textContent = Math.round(R.geser || 0) + " ms";
   const f = $("#fokusVokal"); f.value = P.fokusVokal; isiSlider(f); $("#fokusNilai").textContent = (P.fokusVokal > 0 ? "+" : "") + P.fokusVokal;
 }
-const mixBerubah = tundaan(() => { simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
+/** Ingat setelan mix untuk rekaman yang sedang dibuka (paling banyak 200 rekaman). */
+function simpanMix() {
+  if (!R.nama || !R.musik) return;
+  P.mixRekaman = P.mixRekaman || {}; delete P.mixRekaman[R.nama];
+  P.mixRekaman[R.nama] = { v: P.mixVokal, m: P.mixMusik, g: R.geser };
+  const kunci = Object.keys(P.mixRekaman); if (kunci.length > 200) delete P.mixRekaman[kunci[0]];
+}
+const mixBerubah = tundaan(() => { simpanMix(); simpanPengaturan(); prosesUlang(); if (R.lihat !== "studio") setLihat("studio"); }, 250);
 $("#mixVokal").addEventListener("input", (e) => { P.mixVokal = +e.target.value; tampilMix(); mixBerubah(); });
 $("#mixMusik").addEventListener("input", (e) => { P.mixMusik = +e.target.value; tampilMix(); mixBerubah(); });
 $("#fokusVokal").addEventListener("input", (e) => { P.fokusVokal = +e.target.value; tampilMix(); mixBerubah(); });
@@ -780,6 +790,13 @@ const prosesUlang = tundaan(async () => {
   $("#btnDengar span").textContent = t("memproses");
   try {
     let hasil = await dsp.prosesStudio(R.asli, R.rate, { ...P.efek, fokus: R.musik ? 0 : P.fokusVokal }, R.awal, R.akhir);
+    if (R.musik && R.mixAuto) {
+      // Seimbang otomatis: musik ±5 dB di bawah vokal (diukur pada bagian yang berbunyi)
+      const mulai = Math.floor(R.awal * R.asli.length), akhir = Math.ceil(R.akhir * R.asli.length);
+      const lv = dsp.levelAktif(hasil, R.rate), lm = dsp.levelAktif(R.musik, R.rate, mulai, akhir);
+      P.mixMusik = Math.max(0, Math.min(150, Math.round(100 * Math.pow(10, (lv - 5 - lm) / 20) / 5) * 5));
+      R.mixAuto = false; simpanMix(); tampilMix();
+    }
     if (R.musik) hasil = dsp.campurJalur(hasil, R.musik, R.rate, { volV: P.mixVokal / 100, volM: P.mixMusik / 100, geserMs: R.geser || 0, awal: R.awal, akhir: R.akhir, panjangAsli: R.asli.length });
     if (versi !== R.versi) return;
     R.studio = hasil; if (R.lihat === "studio") gambarGelombang();

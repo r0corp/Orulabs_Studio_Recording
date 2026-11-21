@@ -510,3 +510,13 @@ export function campurJalur(vokal, musik, rate, o) {
   }
   return keraskan(y, rate, -14, 4);
 }
+
+/** Level rata-rata (dB) bagian yang berbunyi saja: jendela 50 ms, abaikan yang lebih dari 30 dB di bawah bagian terkeras. */
+export function levelAktif(x, rate, mulai = 0, akhir = x.length) {
+  const win = Math.floor(rate / 20), lv = [];
+  for (let w = Math.max(0, mulai); w + win <= Math.min(akhir, x.length); w += win) { let t = 0; for (let i = w; i < w + win; i++) t += x[i] * x[i]; lv.push(t / win); }
+  if (!lv.length) return -120;
+  const urut = lv.slice().sort((a, b) => b - a), atas = urut[Math.floor(urut.length * 0.05)] || urut[0], ambang = atas / 1000;
+  let s = 0, n = 0; for (const v of lv) if (v > ambang) { s += v; n++; }
+  return n ? 10 * Math.log10(s / n) : -120;
+}
