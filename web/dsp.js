@@ -179,8 +179,15 @@ export function koreksiEq(pita) {
 }
 
 /** Setelan efek otomatis dari hasil analisa (+ profil pita bila ada): sentuhan studio yang natural, bukan efek berlebihan. */
-export function setelanOtomatis(h, pita) {
+export function setelanOtomatis(h, pita, gaya = 2) {
   const kor = koreksiEq(pita);
+  if (kor && gaya !== 2) {
+    // 1 = Natural (paling mirip aslinya), 3 = Hangat (vokal hangat, sedikit ruang)
+    const s = setelanOtomatis(h, pita, 2);
+    if (gaya === 1) Object.assign(s, { eq: 60, vokalMaju: false, hangat: false, penyeimbang: 30, gema: 3, kilauAktif: false });
+    else Object.assign(s, { eq: 90, vokalMaju: true, hangat: true, penyeimbang: 45, gema: 14, kilauAktif: false });
+    s.gaya = gaya; return s;
+  }
   if (kor) {
     const sisaAtas = pita[7] + kor[7] - KURVA_STUDIO[7]; // nada tinggi masih kurang setelah EQ?
     const s = { desisAktif: h.lantaiDerauDb > -62 && h.lantaiDerauDb < -45, desis: 30,
@@ -288,6 +295,11 @@ async function rantaiWebAudio(x, rate, s) {
     const rendah = ctx.createBiquadFilter(); rendah.type = "peaking"; rendah.frequency.value = 250; rendah.Q.value = 0.7; rendah.gain.value = -4 * e; sambung(rendah);
     const jelas = ctx.createBiquadFilter(); jelas.type = "peaking"; jelas.frequency.value = 2800; jelas.Q.value = 0.7; jelas.gain.value = 4.5 * e; sambung(jelas);
     const udara = ctx.createBiquadFilter(); udara.type = "highshelf"; udara.frequency.value = 10000; udara.gain.value = 2 * e; sambung(udara);
+  }
+  if (s.hangat) {
+    // hangat: badan suara sedikit lebih tebal, nada paling tinggi sedikit lebih lembut
+    const badanB = ctx.createBiquadFilter(); badanB.type = "lowshelf"; badanB.frequency.value = 200; badanB.gain.value = 1.5; sambung(badanB);
+    const lembut = ctx.createBiquadFilter(); lembut.type = "highshelf"; lembut.frequency.value = 9000; lembut.gain.value = -1.5; sambung(lembut);
   }
   if (s.vokalMaju) {
     const lumpur = ctx.createBiquadFilter(); lumpur.type = "peaking"; lumpur.frequency.value = 320; lumpur.Q.value = 1.1; lumpur.gain.value = -1.5; sambung(lumpur);

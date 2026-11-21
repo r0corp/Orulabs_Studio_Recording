@@ -440,7 +440,8 @@ async function bukaRekaman(nama) {
 }
 
 function tampilkanRekaman(nama, data, rate) {
-  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1 });
+  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2 });
+  $("#gayaRapikan").hidden = true;
   $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
   $$("#daftar .item").forEach((el) => el.classList.toggle("on", el.dataset.n === nama));
   Pm.posisi = 0; setLihat("asli");
@@ -630,6 +631,24 @@ $$("#modeKerja button").forEach((b) => (b.onclick = () => {
 }));
 tampilModeKerja();
 
+// Pilihan hasil Rapikan: 1 Natural, 2 Video klip, 3 Hangat (potongan senyap dari Rapikan tetap dipakai)
+function tampilGaya(g) {
+  R.gaya = g; $("#gayaRapikan").hidden = false;
+  $$("#gayaRapikan button").forEach((b) => b.classList.toggle("on", +b.dataset.g === g));
+  $("#gayaKet").textContent = "· " + t("ket" + g);
+}
+$$("#gayaRapikan button").forEach((b) => (b.onclick = () => {
+  if (!R.asli || !R.analisa) return;
+  const g = +b.dataset.g; if (!R.pita) R.pita = dsp.profilPita(R.asli, R.rate);
+  tampilGaya(g); terapkanSetelan(dsp.setelanOtomatis(R.analisa, R.pita, g)); setLihat("studio");
+}));
+// Simpan: hasil Studio jadi file baru; rekaman asli sudah otomatis tersimpan
+$("#btnSimpanAtas").onclick = () => {
+  if (!R.asli) { toast(t("pilihDulu"), true); return; }
+  if (R.lihat !== "studio" && $("#gayaRapikan").hidden) { toast(t("asliTersimpan")); return; }
+  $("#btnSimpanStudio").click();
+};
+
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
@@ -657,7 +676,7 @@ function aturTombol() {
     const b = el.querySelector(".ic"); if (b) { b.disabled = M.rek; b.title = t(main ? "jeda" : "putar"); }
   });
   $("#btnStop").disabled = !M.rek && !Pm.main;
-  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
+  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
   $$("#modeAudio button").forEach((b) => (b.disabled = M.rek));
 }
 
@@ -710,13 +729,15 @@ $("#btnSimpanStudio").onclick = async () => {
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
     desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0,
-    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0, eqCocok: s.eqCocok || null, vokalMaju: !!s.vokalMaju };
+    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0, eqCocok: s.eqCocok || null, vokalMaju: !!s.vokalMaju, hangat: !!s.hangat };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
   if (!R.asli || !R.analisa || R.analisa.pendek) { toast(t("pilihDulu"), true); return; }
   const b = $("#btnRapikan"); b.classList.remove("baru"); b.disabled = true; $("#btnRapikan span").textContent = t("rapikanOtoProses");
-  const s = dsp.setelanOtomatis(R.analisa, dsp.profilPita(R.asli, R.rate));
+  R.pita = dsp.profilPita(R.asli, R.rate);
+  const s = dsp.setelanOtomatis(R.analisa, R.pita, R.gaya || 2);
+  tampilGaya(R.gaya || 2);
   // potong otomatis bagian senyap di awal/akhir (intro sepi, iklan, video yang masih memuat)
   const bs = dsp.batasSenyap(R.asli, R.rate);
   if (bs.awal > 0 || bs.akhir < 1) { R.awal = bs.awal; R.akhir = bs.akhir; s.pesan += " " + t("dipotongSenyap"); }

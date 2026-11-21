@@ -100,14 +100,22 @@
       <div class="sep"></div>
       <div class="editor">
         <div class="card-h">
-          <h3><button class="putar-kecil" id="btnPutar"><i class="bi bi-play-fill"></i></button><span class="vol-putar" data-t-title="volPutar"><i class="bi bi-volume-up" id="ikonVolPutar"></i><input type="range" id="volPutar" min="0" max="200" step="5" value="100"><b id="volPutarNilai">100%</b></span><span id="namaRekaman" data-t="belumDipilih"></span></h3>
+          <h3><button class="putar-kecil" id="btnPutar" data-tip-t="tipPutar"><i class="bi bi-play-fill"></i></button><span class="vol-putar" data-t-title="volPutar"><i class="bi bi-volume-up" id="ikonVolPutar"></i><input type="range" id="volPutar" min="0" max="200" step="5" value="100"><b id="volPutarNilai">100%</b></span><span id="namaRekaman" data-t="belumDipilih"></span></h3>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn rapikan" id="btnRapikan"><i class="bi bi-stars"></i><span data-t="rapikanOto"></span></button>
-            <div class="ab" id="ab"><button data-v="asli" class="on" data-t="asli">Asli</button><button data-v="studio" data-t="studio">Studio</button></div>
-            <button class="btn" id="btnGanti"><i class="bi bi-pencil"></i></button>
-            <button class="btn" id="btnFolder"><i class="bi bi-folder2-open"></i></button>
-            <button class="btn" id="btnHapus"><i class="bi bi-trash3"></i></button>
+            <button class="btn rapikan" id="btnRapikan" data-tip-t="tipRapikan"><i class="bi bi-stars"></i><span data-t="rapikanOto"></span></button>
+            <div class="ab" id="ab"><button data-v="asli" class="on" data-t="asli" data-tip-t="tipAsli">Asli</button><button data-v="studio" data-t="studio" data-tip-t="tipStudio">Studio</button></div>
+            <button class="btn primary" id="btnSimpanAtas" data-tip-t="tipSimpan"><i class="bi bi-download"></i><span data-t="simpan"></span></button>
+            <button class="btn" id="btnGanti" data-tip-t="tipGanti"><i class="bi bi-pencil"></i></button>
+            <button class="btn" id="btnFolder" data-tip-t="tipFolder"><i class="bi bi-folder2-open"></i></button>
+            <button class="btn" id="btnHapus" data-tip-t="tipHapus"><i class="bi bi-trash3"></i></button>
           </div>
+        </div>
+        <div class="gaya-rapikan" id="gayaRapikan" hidden>
+          <span data-t="pilihHasil"></span>
+          <button data-g="1"><b>1</b><span data-t="gaya1"></span></button>
+          <button data-g="2"><b>2</b><span data-t="gaya2"></span></button>
+          <button data-g="3"><b>3</b><span data-t="gaya3"></span></button>
+          <em id="gayaKet"></em>
         </div>
         <div class="wave-wrap" id="gelombang">
           <canvas id="wave"></canvas>
