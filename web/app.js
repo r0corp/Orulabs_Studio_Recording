@@ -330,10 +330,19 @@ async function muatDaftar() {
   $("#daftar").innerHTML = R.daftar.length ? R.daftar.map((r) => {
     const w = new Date(r.waktu), studio = /\(Studio\)/i.test(r.nama);
     const kapan = w.toDateString() === hariIni ? w.toTimeString().slice(0, 5) : w.toLocaleDateString(P.bahasa === "en" ? "en-GB" : "id-ID", { day: "numeric", month: "short" });
-    return '<div class="item' + (r.nama === R.nama ? " on" : "") + '" data-n="' + esc(r.nama) + '"><div class="ic"><i class="bi ' + (studio ? "bi-stars" : "bi-play-fill") + '"></i></div>' +
+    return '<div class="item' + (r.nama === R.nama ? " on" : "") + '" data-n="' + esc(r.nama) + '"><button class="ic" data-putar title="' + esc(t("putar")) + '"><i class="bi bi-play-fill"></i></button>' +
       "<div><b>" + esc(r.nama) + "</b><span>" + kapan + " · " + t(studio ? "studio" : "asli") + '</span></div><div class="r">' + waktu(r.durasi) + "</div></div>";
   }).join("") : '<div class="info">' + esc(t("belumRekaman")) + "</div>";
-  $$("#daftar .item").forEach((el) => (el.onclick = () => bukaRekaman(el.dataset.n)));
+  $$("#daftar .item").forEach((el) => (el.onclick =(e) => (e.target.closest("[data-putar]") ? putarDariDaftar(el.dataset.n) : bukaRekaman(el.dataset.n))));
+  aturTombol();
+}
+
+/** Tombol ▶/⏸ di daftar: putar rekaman itu, atau jeda/lanjutkan bila sedang dipilih. */
+async function putarDariDaftar(nama) {
+  if (M.rek) return;
+  if (R.nama === nama && R.asli) { if (Pm.main) hentikanPutar(); else putar(); return; }
+  await bukaRekaman(nama);
+  if (R.nama === nama && R.asli) putar();
 }
 
 async function bukaRekaman(nama) {
@@ -490,6 +499,14 @@ function aturTombol() {
   const ada = !!R.asli;
   $("#btnPutar").disabled = M.rek || !ada;
   $("#btnPutar i").className = "bi " + (Pm.main ? "bi-pause-fill" : "bi-play-fill");
+  $("#btnPutar").title = t(Pm.main ? "jeda" : "putar");
+  // ikon di daftar: ⏸ untuk rekaman yang sedang diputar, ▶ untuk yang lain
+  $$("#daftar .item").forEach((el) => {
+    const main = Pm.main && el.dataset.n === R.nama;
+    el.classList.toggle("main", main);
+    const ic = el.querySelector(".ic i"); if (ic) ic.className = "bi " + (main ? "bi-pause-fill" : "bi-play-fill");
+    const b = el.querySelector(".ic"); if (b) { b.disabled = M.rek; b.title = t(main ? "jeda" : "putar"); }
+  });
   $("#btnStop").disabled = !M.rek && !Pm.main;
   ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
   $$("#modeAudio button").forEach((b) => (b.disabled = M.rek));

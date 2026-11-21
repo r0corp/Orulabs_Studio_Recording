@@ -491,3 +491,9 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn.rapikan.baru { animation: ajak 1.6s ease-in-out infinite; }
 @keyframes ajak { 50% { box-shadow: 0 0 0 6px rgba(var(--p-rgb), .22), 0 6px 18px rgba(var(--p-rgb), .35); } }
 .btn.rapikan:disabled { animation: none; box-shadow: none; }
+
+/* Putar/jeda langsung dari daftar rekaman dan dari atas gelombang */
+.item .ic { border: 0; cursor: pointer; font-size: 15px; transition: background .15s, color .15s; }
+.item .ic:hover, .item.main .ic { background: var(--p); color: #fff; }
+.putar-kecil { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--p); color: #fff; display: grid; place-items: center; font-size: 15px; cursor: pointer; }
+.putar-kecil:disabled { opacity: .4; cursor: not-allowed; }

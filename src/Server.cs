@@ -15,10 +15,10 @@ namespace OrulabStudio
 {
     static class Program
     {
-        public const int Port = 47821;
+        public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.1.1";
-        public static readonly string Alamat = "http://localhost:" + Port + "/";
+        public const string Versi = "1.1.2";
+        public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
         static readonly object kunciFile = new object();
@@ -35,6 +35,8 @@ namespace OrulabStudio
         [STAThread]
         static int Main(string[] args)
         {
+            int ip = Array.IndexOf(args, "--port"); int portTes;
+            if (ip >= 0 && ip + 1 < args.Length && int.TryParse(args[ip + 1], out portTes)) Port = portTes;
             folderWeb = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
             if (!Directory.Exists(folderWeb))
             {
