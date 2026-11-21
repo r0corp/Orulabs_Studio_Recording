@@ -779,20 +779,33 @@ $("#btnSimpanAtas").onclick = () => {
 
 // ================= Magic Vocal =================
 const TINGKAT = { natural: { k: 60, cepat: 0.12, gema: 8 }, pop: { k: 85, cepat: 0.06, gema: 12 }, autotune: { k: 100, cepat: 0, gema: 10 } };
-const MV = { tingkat: "pop", kekuatan: 85, langkah: { nada: true, dinamika: true, rantai: true, master: true }, untuk: null, kunci: null, lacak: null, sibuk: false, ren: null, awalGrafik: 0 };
+const namaKunci = (k) => (k ? magic.NADA[k.tonik] + " " + t(k.mayor ? "kMayor" : "kMinor") : "");
+const MV = { pilihKunci: "auto", kunciAuto: null, tingkat: "pop", kekuatan: 85, langkah: { nada: true, dinamika: true, rantai: true, master: true }, untuk: null, kunci: null, lacak: null, sibuk: false, ren: null, awalGrafik: 0 };
 function tutupMagic() { $("#mvPop").hidden = true; }
 function tampilMV() {
   $$("#mvTingkat [data-tk]").forEach((d) => d.classList.toggle("on", d.dataset.tk === MV.tingkat));
   const k = $("#mvKekuatan"); k.value = MV.kekuatan; isiSlider(k); $("#mvKekuatanNilai").textContent = MV.kekuatan + "%";
   $$(".mv-langkah .sw").forEach((s) => s.classList.toggle("off", !MV.langkah[s.dataset.lk]));
-  $("#mvKunci").textContent = MV.kunci ? t("mvKunciLagu") + ": " + MV.kunci.nama : t("mvKunciBaca");
-  $("#mvKunciChip").innerHTML = MV.kunci ? '<i class="bi bi-check-circle-fill"></i> ' + esc(t("mvTerdeteksi")) : "";
+  $("#mvKunci").textContent = MV.kunci ? t("mvKunciLagu") + ": " + namaKunci(MV.kunci) : t("mvKunciBaca");
+  $("#mvKunciKet").textContent = MV.pilihKunci === "auto" ? t("mvKunciKet") : t("kDipilih");
+  const opsi = [{ nilai: "auto", label: t("kOtomatis"), ket: MV.kunciAuto ? namaKunci(MV.kunciAuto) : t("mvKunciBaca"), ikon: "bi-magic" }];
+  for (const mayor of [true, false]) for (let tk = 0; tk < 12; tk++) {
+    const det = MV.kunciAuto && MV.kunciAuto.tonik === tk && MV.kunciAuto.mayor === mayor;
+    opsi.push({ nilai: tk + (mayor ? "M" : "m"), label: namaKunci({ tonik: tk, mayor }), ket: det ? t("kTerdeteksi") : "", ikon: mayor ? "bi-music-note" : "bi-music-note-beamed" });
+  }
+  dropdown($("#ddKunci"), { opsi, nilai: MV.pilihKunci, kepala: t("pilihKunci"), onPilih: (v) => {
+    MV.pilihKunci = v;
+    MV.kunci = v === "auto" ? MV.kunciAuto : { tonik: parseInt(v, 10), mayor: v.endsWith("M") };
+    tampilMV();
+  } });
 }
 async function siapkanAnalisaMagic() {
-  if (MV.untuk === R.nama && MV.kunci) return;
-  MV.untuk = R.nama; MV.kunci = null; MV.lacak = null; tampilMV();
-  MV.kunci = await magic.deteksiKunci(R.musik, R.rate);
-  if (MV.untuk === R.nama) tampilMV();
+  if (MV.untuk === R.nama && MV.kunciAuto) return;
+  MV.untuk = R.nama; MV.kunci = null; MV.kunciAuto = null; MV.pilihKunci = "auto"; MV.lacak = null; tampilMV();
+  const k = await magic.deteksiKunci(R.musik, R.rate);
+  if (MV.untuk !== R.nama) return;
+  MV.kunciAuto = k; if (MV.pilihKunci === "auto") MV.kunci = k;
+  tampilMV();
 }
 $("#btnMagic").onclick = (e) => {
   e.stopPropagation();
@@ -807,7 +820,7 @@ $("#btnMagic").onclick = (e) => {
   $("#mvPanah").style.left = (r.left + r.width / 2 - kiri - 7) + "px";
   siapkanAnalisaMagic();
 };
-$("#mvPop").addEventListener("click", (e) => e.stopPropagation());
+$("#mvPop").addEventListener("click", (e) => { e.stopPropagation(); tutupDropdown(); });
 document.addEventListener("click", () => { if (!MV.sibuk) tutupMagic(); });
 $("#mvTutup").onclick = tutupMagic;
 $$("#mvTingkat [data-tk]").forEach((d) => (d.onclick = () => { MV.tingkat = d.dataset.tk; MV.kekuatan = TINGKAT[MV.tingkat].k; tampilMV(); }));
@@ -837,7 +850,7 @@ $("#mvProses").onclick = async () => {
     terapkanSetelan(s); setLihat("studio");
     const st = MV.ren.stat;
     $("#mvStatusJudul").textContent = t("magicVocal") + ": " + $('#mvTingkat [data-tk="' + MV.tingkat + '"] b').textContent;
-    $("#mvStatusKet").textContent = t("mvKet").replace("{n}", st.nadaDikoreksi).replace("{a}", st.falsSebelum).replace("{b}", MV.langkah.nada ? st.falsSesudah : st.falsSebelum).replace("{k}", MV.kunci.nama);
+    $("#mvStatusKet").textContent = t("mvKet").replace("{n}", st.nadaDikoreksi).replace("{a}", st.falsSebelum).replace("{b}", MV.langkah.nada ? st.falsSesudah : st.falsSebelum).replace("{k}", namaKunci(MV.kunci));
     $("#mvStatus").hidden = false;
     tampilGrafikNada(true);
     tutupMagic(); toast(t("mvSelesai"));
@@ -861,7 +874,7 @@ function tampilGrafikNada(cariAwal) {
   const st = ren.stat;
   $("#stNadaTepat").textContent = st.tepat + "%"; $("#stNadaRapi").textContent = st.nadaDikoreksi;
   $("#stNadaSisa").textContent = (MV.langkah.nada ? st.falsSesudah : st.falsSebelum) + " sen";
-  $("#lgKunci").textContent = MV.kunci ? MV.kunci.nama : "";
+  $("#lgKunci").textContent = namaKunci(MV.kunci);
   const cv = $("#kanvasNada"), dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
   cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
   // rentang dari nada yang wajar (persentil 5-95), supaya salah baca sesaat (loncat oktaf) tidak melebarkan grafik

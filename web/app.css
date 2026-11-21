@@ -787,3 +787,8 @@ canvas { display: block; width: 100%; height: 100%; }
 .vmeter.kapsul .ik.in:hover::after { left: -6px; transform: none; }
 
 .vmeter.kapsul { position: relative; z-index: 5; }
+
+/* pilihan kunci lagu di panel Magic Vocal */
+.mv-kunci .mv-kunci-teks { flex: 1; min-width: 0; }
+.mv-kunci .dd { width: 150px; }
+.mv-kunci .dd-menu { width: 230px; max-height: 300px; }
