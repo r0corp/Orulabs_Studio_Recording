@@ -297,7 +297,25 @@ async function mulaiRekam() {
   if (!M.node || !M.stream || !M.stream.active) { toast(t("belumSiap"), true); return; }
   if (Pm.main) hentikanPutar();
   await M.ctx.resume();
-  M.potongan = []; M.rek = true; M.node.port.postMessage(true); M.mulai = performance.now();
+  M.potongan = []; M.rek = true; M.mulai = performance.now();
+  // Rekam langsung dari mic dengan jam mic sendiri. Lewat AudioContext, jamnya ikut speaker (Bluetooth) dan
+  // Chrome membuang potongan suara saat Bluetooth tersendat, sehingga rekaman terdengar makin cepat.
+  M.langsung = null;
+  if (window.MediaStreamTrackProcessor) {
+    try {
+      const tr = M.stream.getAudioTracks()[0].clone(), rd = new MediaStreamTrackProcessor({ track: tr }).readable.getReader();
+      const L = { tr, rd, potongan: [], rate: 0, aktif: true };
+      L.selesai = (async () => {
+        while (L.aktif) {
+          const { value, done } = await rd.read(); if (done) break;
+          L.rate = value.sampleRate; const f = new Float32Array(value.numberOfFrames);
+          value.copyTo(f, { planeIndex: 0, format: "f32-planar" }); value.close(); L.potongan.push(f);
+        }
+      })().catch(() => {});
+      M.langsung = L;
+    } catch { M.langsung = null; }
+  }
+  if (!M.langsung) M.node.port.postMessage(true);
   // Rekam bersama YouTube: lagu yang sedang dibuka ikut jalan, judulnya dipakai untuk nama rekaman
   M.judulLagu = YT.kini ? YT.kini.judul : "";
   M.bersamaYt = !!(P.sinkronYt && YT.pemutar && YT.kini);
@@ -317,16 +335,23 @@ function namaRekamanBaru() {
 async function selesaiRekam() {
   if (!M.rek) return;
   M.node.port.postMessage(false); await tunggu(120); M.rek = false;
+  const L = M.langsung; M.langsung = null;
+  if (L) { L.aktif = false; try { await L.rd.cancel(); } catch {} L.tr.stop(); await L.selesai; }
   if (M.bersamaYt && YT.pemutar && (YT.status === 1 || YT.status === 3)) { try { YT.pemutar.pauseVideo(); } catch {} }
   $("#btnRekam").classList.remove("on"); $("#btnRekam i").className = "bi bi-mic-fill";
   $("#recPill").classList.add("diam"); $("#recPill span").textContent = t("siap");
   $("#timerKet").textContent = t("tekanRekam");
   aturTombol(); perbaruiSiap();
-  const total = M.potongan.reduce((a, c) => a + c.length, 0);
+  const sumber = L && L.rate ? L.potongan : M.potongan;
+  const total = sumber.reduce((a, c) => a + c.length, 0);
   let data = new Float32Array(total), o = 0;
-  for (const c of M.potongan) { data.set(c, o); o += c.length; }
+  for (const c of sumber) { data.set(c, o); o += c.length; }
   M.potongan = [];
-  const rate = M.ctx.sampleRate;
+  const rate = L && L.rate ? L.rate : M.ctx.sampleRate;
+  // Cek: panjang rekaman harus sama dengan lama merekam (selisih besar = ada suara yang hilang)
+  const lama = (performance.now() - M.mulai) / 1000 - 0.12, selisih = total / rate - lama;
+  console.info("rekam:", L && L.rate ? "langsung" : "worklet", rate, "Hz,", (total / rate).toFixed(2), "dtk dari", lama.toFixed(2), "dtk");
+  if (total >= rate * 0.5 && Math.abs(selisih) > Math.max(0.5, lama * 0.01)) toast(t("rekamTerputus"), true);
   if (total < rate * 0.5) { toast(t("terlaluPendek"), true); return; }
   if (P.keraskanOto) data = dsp.keraskanRekaman(data, rate);
   try {
