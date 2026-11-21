@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="id" data-ol-skin="glass-dark" data-warna="mawar">
+<head>
+<meta charset="utf-8">
+<title>Oru Studio · Android</title>
+<link rel="stylesheet" href="../../web/vendor/inter/inter.css">
+<link rel="stylesheet" href="../../web/vendor/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../web/app.css">
+<style>
+/* ===== Mockup Oru Studio (APK): 4 layar HP berdampingan ===== */
+html, body { overflow: auto; }
+body { display: flex; align-items: flex-start; justify-content: center; gap: 30px; padding: 28px 24px 20px; min-height: 100vh; }
+.kol { display: flex; flex-direction: column; align-items: center; }
+.cap { text-align: center; font-size: 13.5px; font-weight: 700; margin-top: 12px; }
+.cap small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 3px; max-width: 380px; line-height: 1.45; }
+.hp { width: 390px; height: 844px; border-radius: 46px; padding: 12px; background: #05070d; box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 2px #1d2333; flex: none; }
+.layar { position: relative; height: 100%; border-radius: 36px; overflow: hidden; display: flex; flex-direction: column;
+  background: radial-gradient(60% 40% at 10% 5%, var(--bg1), transparent 70%), radial-gradient(50% 40% at 95% 30%, var(--bg2), transparent 70%),
+              radial-gradient(60% 40% at 50% 100%, var(--bg3), transparent 70%), var(--solid); }
+.status { flex: none; height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 12px; font-weight: 600; }
+.status .lubang { width: 12px; height: 12px; border-radius: 50%; background: #05070d; }
+.atas { flex: none; display: flex; align-items: center; gap: 10px; padding: 4px 16px 10px; }
+.atas img.ikon { width: 36px; height: 36px; border-radius: 10px; }
+.atas .nama b { display: block; font-size: 16px; line-height: 1.1; letter-spacing: -.01em; }
+.atas .nama span { font-size: 10.5px; color: var(--muted); }
+.ib { margin-left: auto; width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 16px; display: grid; place-items: center; }
+.isi { flex: 1; min-height: 0; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.cari { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12.5px; color: var(--muted); flex: none; }
+.cari .bi-youtube { color: #ff3b3b; font-size: 17px; }
+.vid { border-radius: 14px; overflow: hidden; aspect-ratio: 16/9; background: #000 url(https://i.ytimg.com/vi/Yrt7hSN-0J0/hqdefault.jpg) center/cover; position: relative; flex: none; }
+.vid .bar { position: absolute; left: 10px; right: 10px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.3); }
+.vid .bar i { position: absolute; inset: 0 auto 0 0; width: 35%; background: #ff3b3b; border-radius: 2px; }
+.vid .siap { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5,7,13,.72); color: #fff; font-size: 12px; font-weight: 600; text-align: center; }
+.vid .siap i { font-size: 30px; display: block; margin-bottom: 4px; }
+.vid.besar { aspect-ratio: auto; flex: 1; min-height: 0; background-size: cover; }
+.kini { display: flex; align-items: center; gap: 8px; flex: none; }
+.kini > div { min-width: 0; flex: 1; }
+.kini b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kini a { font-size: 11px; color: var(--p); font-weight: 600; }
+.judul-kecil { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 700; flex: none; }
+.judul-kecil span { font-size: 11px; font-weight: 500; color: var(--muted); }
+.daftar { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+.it { display: flex; gap: 9px; align-items: center; }
+.it .th { width: 92px; aspect-ratio: 16/9; border-radius: 8px; flex: none; background: #222 center/cover; position: relative; }
+.it .th small { position: absolute; right: 3px; bottom: 3px; font-size: 9.5px; padding: 0 4px; border-radius: 3px; background: rgba(0,0,0,.75); color: #fff; }
+.it b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; line-height: 1.3; }
+.it span { font-size: 10.5px; color: var(--p); }
+
+/* Musik panduan: volume speaker saja */
+.panduan { flex: none; border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+.panduan > i { font-size: 18px; color: var(--p); }
+.panduan .tk { flex: 1; min-width: 0; }
+.panduan b { font-size: 12px; display: flex; justify-content: space-between; }
+.panduan b em { font-style: normal; color: var(--p); }
+.panduan small { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+.geser { position: relative; height: 5px; border-radius: 3px; background: var(--track); margin: 8px 0 4px; }
+.geser i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, var(--p), var(--p2)); }
+.geser u { position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+
+/* Bilah perekam bawah: kapsul level ikon saja + tombol rekam A */
+.perekam { flex: none; margin: 8px 12px 0; padding: 10px 12px; border-radius: 20px; display: flex; align-items: center; gap: 12px; }
+.perekam .info { flex: 1; min-width: 0; }
+.perekam .waktu { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; display: flex; align-items: center; gap: 8px; }
+.perekam .waktu .d { width: 9px; height: 9px; border-radius: 50%; background: var(--rec); box-shadow: 0 0 0 4px rgba(255,77,94,.2); }
+.perekam .ket { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+.kap { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+.kap > i { font-size: 12px; color: var(--muted); width: 13px; text-align: center; }
+.kap .ks { flex: 1; height: 8px; border-radius: 999px; background: var(--track); position: relative; overflow: hidden; }
+.kap .ks i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, #34d399 0 70%, #fbbf24 85%, #f87171); background-size: 260px 100%; }
+.recbtn { width: 62px; height: 62px; border-radius: 50%; border: 0; background: var(--rec); color: #fff; font-size: 24px; display: grid; place-items: center; flex: none;
+  box-shadow: 0 0 0 6px rgba(255,77,94,.18), 0 8px 20px rgba(255,77,94,.4); }
+.recbtn .kotak { width: 20px; height: 20px; border-radius: 5px; background: #fff; }
+.pil { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+.pil.ok { color: var(--ok); border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.1); }
+.pils { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+
+/* Catatan iklan */
+.iklan { flex: none; border-radius: 12px; padding: 9px 11px; display: flex; gap: 9px; align-items: flex-start; border: 1px dashed rgba(251,191,36,.55); background: rgba(251,191,36,.08); font-size: 11px; line-height: 1.45; }
+.iklan i { color: #fbbf24; font-size: 15px; }
+
+/* Navigasi bawah */
+.nav { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 10px 16px; }
+.nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.nav a i { font-size: 19px; width: 56px; height: 28px; border-radius: 14px; display: grid; place-items: center; }
+.nav a.on { color: var(--text); }
+.nav a.on i { background: rgba(var(--p-rgb), .25); color: var(--p); }
+
+/* Layar hasil */
+.kartu { border-radius: 16px; padding: 12px; flex: none; }
+.kepala-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.kepala-h b { font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gelo { height: 88px; border-radius: 12px; background: rgba(0,0,0,.22); display: flex; align-items: center; gap: 2px; padding: 0 6px; position: relative; overflow: hidden; }
+.gelo i { flex: 1; border-radius: 1px; background: linear-gradient(180deg, var(--p2), var(--p)); }
+.gelo .pos { position: absolute; top: 0; bottom: 0; left: 38%; width: 2px; background: #fff; }
+.gelo .hdl { position: absolute; top: 0; bottom: 0; width: 6px; border-radius: 3px; background: rgba(255,255,255,.55); }
+.waktu-h { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin: 5px 2px 8px; }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl .main { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--p); color: #fff; font-size: 20px; flex: none; }
+.ab2 { display: flex; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.ab2 span { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; color: var(--muted); }
+.ab2 span.on { background: var(--p); color: #fff; }
+.ikonb { width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); display: grid; place-items: center; font-size: 15px; flex: none; }
+.ikonb.wa { color: #25d366; }
+.mix { display: grid; grid-template-columns: 16px 1fr 34px; align-items: center; gap: 4px 9px; font-size: 11px; }
+.mix > i { color: var(--muted); font-size: 13px; }
+.mix .geser { margin: 0; }
+.mix em { font-style: normal; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dua { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: none; }
+.aksi { height: 46px; border: 0; border-radius: 14px; color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: linear-gradient(135deg, var(--p), var(--p2)); box-shadow: 0 8px 22px rgba(var(--p-rgb), .3); }
+.aksi.lain { background: var(--surface-2); border: 1px solid var(--border); box-shadow: none; color: var(--text); }
+.rk { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 12px; }
+.rk.on { background: rgba(var(--p-rgb), .16); }
+.rk .ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--p); flex: none; font-size: 13px; }
+.rk b { display: block; font-size: 12px; }
+.rk span { font-size: 10.5px; color: var(--muted); }
+.rk .d { margin-left: auto; font-size: 11px; color: var(--muted); }
+.sek-j { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+
+/* Layar Magic Vocal (lembar bawah) */
+.redup { position: absolute; inset: 0; background: rgba(4,6,12,.55); }
+.lembar { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; padding: 10px 16px 22px; display: flex; flex-direction: column; gap: 12px;
+  background: color-mix(in srgb, var(--solid) 88%, transparent); border-top: 1px solid var(--border); backdrop-filter: blur(20px); }
+.lembar .tarik { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 2px; }
+.lembar h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.lembar h3 i { color: var(--p); }
+.kunci { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
+.kunci b { font-size: 20px; }
+.kunci span { font-size: 11px; color: var(--muted); flex: 1; }
+.tingkat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.tingkat div { border-radius: 13px; padding: 9px 6px; text-align: center; background: var(--surface-2); border: 1px solid var(--border); }
+.tingkat div.on { border-color: var(--p); background: rgba(var(--p-rgb), .18); }
+.tingkat b { display: block; font-size: 12.5px; }
+.tingkat small { font-size: 10px; color: var(--muted); }
+.grafik { height: 92px; border-radius: 12px; background: rgba(0,0,0,.25); position: relative; overflow: hidden; }
+.grafik svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.leg { display: flex; gap: 12px; font-size: 10px; color: var(--muted); }
+.leg i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 1: Siap rekam ===== -->
+<div class="kol"><div class="hp"><div class="layar">
+  <div class="status"><span>21.30</span><span class="lubang"></span><span><i class="bi bi-wifi"></i> <i class="bi bi-battery-full"></i></span></div>
+  <div class="atas">
+    <img class="ikon" src="../../web/assets/brand/ikon-studio.svg" alt="">
+    <div class="nama"><b>Oru Studio</b><span>Karaoke &amp; rekam</span></div>
+    <button class="ib"><i class="bi bi-clock-history"></i></button>
+  </div>
+  <div class="isi">
+    <div class="cari"><i class="bi bi-youtube"></i>Cari lagu karaoke di YouTube…</div>
+    <div class="vid"><div class="siap"><div><i class="bi bi-mic-fill"></i>Siap · lagu mulai saat Anda tekan rekam</div></div></div>
+    <div class="kini"><div><b>Seluruh Nafas Ini (Karaoke Akustik) - Last Child</b><a>Gitaris Laperan</a></div></div>
+    <div class="panduan glass">
+      <i class="bi bi-volume-down-fill"></i>
+      <div class="tk"><b>Musik panduan <em>25%</em></b>
+        <div class="geser"><i style="width:25%"></i><u style="left:25%"></u></div>
+        <small>Hanya volume speaker. Musik di rekaman tetap penuh &amp; jernih.</small></div>
+    </div>
+    <div class="judul-kecil">Berikutnya<span>Putar otomatis</span></div>
+    <div class="daftar">
+      <div class="it"><div class="th" style="background-image:url(https://i.ytimg.com/vi/yc8BF5vReDQ/mqdefault.jpg)"><small>4:37</small></div><div><b>Bebi Romeo - Bunga Terakhir (Karaoke)</b><span>Tangga Music Studio</span></div></div>
+      <div class="it"><div class="th" style="background-image:url(https://i.ytimg.com/vi/YXnFc-zAwFU/mqdefault.jpg)"><small>3:58</small></div><div><b>Hati Hati Di Jalan - Tulus (Karaoke Akustik)</b><span>Gitaris Laperan</span></div></div>
+      <div class="it"><div class="th" style="background-image:url(https://i.ytimg.com/vi/xOpgfHiSUXE/mqdefault.jpg)"><small>4:19</small></div><div><b>Hal Hebat (Karaoke Akustik) - Govinda</b><span>Gitaris Laperan</span></div></div>
+    </div>
+  </div>
+  <div class="perekam glass">
+    <div class="info"><div class="waktu">00:00</div><div class="ket">Tekan untuk mulai merekam</div>
+      <div class="pils"><span class="pil"><i class="bi bi-mic"></i>Mic HP</span><span class="pil"><i class="bi bi-phone"></i>Speaker HP</span><span class="pil ok"><i class="bi bi-music-note"></i>Musik digital</span><span class="pil ok"><i class="bi bi-shield-check"></i>Tanpa iklan</span></div></div>
+    <button class="recbtn"><i class="bi bi-mic-fill"></i></button>
+  </div>
+  <div class="nav"><a class="on"><i class="bi bi-music-note-beamed"></i>Karaoke</a><a><i class="bi bi-collection-play"></i>Rekaman</a><a><i class="bi bi-gear"></i>Pengaturan</a></div>
+</div></div><div class="cap">1 · Siap rekam<small>Cari lagu, atur musik panduan pelan, lalu tekan rekam. Lagu langsung mulai bersamaan.</small></div></div>
+
+<!-- ===== 2: Merekam ===== -->
+<div class="kol"><div class="hp"><div class="layar">
+  <div class="status"><span>21.31</span><span class="lubang"></span><span><i class="bi bi-wifi"></i> <i class="bi bi-battery-full"></i></span></div>
+  <div class="atas">
+    <img class="ikon" src="../../web/assets/brand/ikon-studio.svg" alt="">
+    <div class="nama"><b>Oru Studio</b><span>Merekam…</span></div>
+  </div>
+  <div class="isi">
+    <div class="vid besar"><div class="bar"><i></i></div></div>
+    <div class="kini"><div><b>Seluruh Nafas Ini (Karaoke Akustik) - Last Child</b><a>Gitaris Laperan</a></div></div>
+    <div class="panduan glass">
+      <i class="bi bi-volume-down-fill"></i>
+      <div class="tk"><b>Musik panduan <em>25%</em></b><div class="geser"><i style="width:25%"></i><u style="left:25%"></u></div></div>
+    </div>
+    <div class="iklan" style="border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.08)"><i class="bi bi-shield-check" style="color:#34d399"></i><div><b>Tanpa iklan.</b> Iklan YouTube diblokir di dalam Oru Studio. Kalau ada yang lolos, rekaman berhenti sebentar dan lanjut sendiri.</div></div>
+  </div>
+  <div class="perekam glass">
+    <div class="info"><div class="waktu"><span class="d"></span>01:24</div>
+      <div class="kap" title="Vokal"><i class="bi bi-mic-fill"></i><span class="ks"><i style="width:68%"></i></span></div>
+      <div class="kap" title="Musik"><i class="bi bi-music-note-beamed"></i><span class="ks"><i style="width:56%"></i></span></div></div>
+    <button class="recbtn"><span class="kotak"></span></button>
+  </div>
+  <div class="nav"><a class="on"><i class="bi bi-music-note-beamed"></i>Karaoke</a><a><i class="bi bi-collection-play"></i>Rekaman</a><a><i class="bi bi-gear"></i>Pengaturan</a></div>
+</div></div><div class="cap">2 · Merekam<small>Video &amp; lirik dibesarkan. Dua kapsul level: vokal (mic) dan musik (digital). Layar tetap menyala.</small></div></div>
+
+<!-- ===== 3: Hasil ===== -->
+<div class="kol"><div class="hp"><div class="layar">
+  <div class="status"><span>21.36</span><span class="lubang"></span><span><i class="bi bi-wifi"></i> <i class="bi bi-battery-full"></i></span></div>
+  <div class="atas"><div class="nama"><b style="font-size:17px">Rekaman</b><span>3 rekaman · Musik/Oru Studio</span></div><button class="ib"><i class="bi bi-plus-lg"></i></button></div>
+  <div class="isi">
+    <div class="kartu glass">
+      <div class="kepala-h"><b>Seluruh Nafas Ini 21.31</b><button class="ikonb"><i class="bi bi-pencil"></i></button></div>
+      <div class="gelo" id="g3"><span class="hdl" style="left:0"></span><span class="pos"></span><span class="hdl" style="right:0"></span></div>
+      <div class="waktu-h"><span>01:24</span><span>03:42</span></div>
+      <div class="ctl">
+        <button class="main"><i class="bi bi-play-fill"></i></button>
+        <div class="ab2"><span>Asli</span><span class="on">Studio</span></div>
+        <span style="flex:1"></span>
+        <button class="ikonb wa"><i class="bi bi-whatsapp"></i></button>
+        <button class="ikonb"><i class="bi bi-download"></i></button>
+      </div>
+    </div>
+    <div class="kartu glass mix">
+      <i class="bi bi-mic-fill"></i><div class="geser"><i style="width:72%"></i><u style="left:72%"></u></div><em>100</em>
+      <i class="bi bi-music-note-beamed"></i><div class="geser"><i style="width:40%"></i><u style="left:40%"></u></div><em>45</em>
+      <i class="bi bi-arrow-left-right"></i><div class="geser"><i style="width:30%"></i><u style="left:30%"></u></div><em>30ms</em>
+    </div>
+    <div class="dua"><button class="aksi"><i class="bi bi-sliders"></i>Mix Studio</button><button class="aksi lain"><i class="bi bi-magic"></i>Magic Vocal</button></div>
+    <div class="sek-j">Rekaman saya</div>
+    <div class="kartu glass" style="padding:5px">
+      <div class="rk on"><div class="ic"><i class="bi bi-pause-fill"></i></div><div><b>Seluruh Nafas Ini 21.31</b><span>Hari ini · 2 jalur</span></div><span class="d">03:42</span></div>
+      <div class="rk"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Mengenangmu - Kerispatih</b><span>Kemarin · Studio</span></div><span class="d">04:05</span></div>
+      <div class="rk"><div class="ic"><i class="bi bi-play-fill"></i></div><div><b>Bunga Terakhir</b><span>Kemarin · 2 jalur</span></div><span class="d">04:31</span></div>
+    </div>
+  </div>
+  <div class="nav"><a><i class="bi bi-music-note-beamed"></i>Karaoke</a><a class="on"><i class="bi bi-collection-play"></i>Rekaman</a><a><i class="bi bi-gear"></i>Pengaturan</a></div>
+</div></div><div class="cap">3 · Hasil rekaman<small>Sama seperti versi laptop: Asli/Studio, atur Vokal · Musik · Sinkron, Mix Studio, tarik ujung gelombang untuk Potong, kirim WhatsApp.</small></div></div>
+
+<!-- ===== 4: Magic Vocal ===== -->
+<div class="kol"><div class="hp"><div class="layar">
+  <div class="status"><span>21.38</span><span class="lubang"></span><span><i class="bi bi-wifi"></i> <i class="bi bi-battery-full"></i></span></div>
+  <div class="atas"><div class="nama"><b style="font-size:17px">Rekaman</b><span>3 rekaman · Musik/Oru Studio</span></div></div>
+  <div class="isi">
+    <div class="kartu glass"><div class="kepala-h"><b>Seluruh Nafas Ini 21.31</b></div><div class="gelo" id="g4"></div></div>
+  </div>
+  <div class="redup"></div>
+  <div class="lembar">
+    <div class="tarik"></div>
+    <h3><i class="bi bi-magic"></i>Magic Vocal</h3>
+    <div class="kunci"><div><small style="display:block;font-size:10px;color:var(--muted)">Kunci lagu</small><b>G mayor</b></div><span>Terdeteksi otomatis<br>yakin 86%</span><button class="btn kecil">Ganti</button></div>
+    <div class="tingkat"><div><b>Natural</b><small>halus</small></div><div class="on"><b>Pop</b><small>rapi</small></div><div><b>Autotune</b><small>efek</small></div></div>
+    <div class="grafik"><svg viewBox="0 0 340 92" preserveAspectRatio="none" id="gr"></svg></div>
+    <div class="leg"><span><i style="background:rgba(255,255,255,.45)"></i>Nada asli</span><span><i style="background:var(--p)"></i>Sesudah Magic</span><span><i style="background:rgba(255,255,255,.12);height:8px"></i>Nada pas</span></div>
+    <button class="aksi"><i class="bi bi-stars"></i>Proses Magic Vocal</button>
+  </div>
+</div></div><div class="cap">4 · Magic Vocal<small>Lembar dari bawah: kunci lagu otomatis, 3 tingkat, grafik nada sebelum/sesudah.</small></div></div>
+
+<script>
+// gelombang contoh
+for (const [id, n, potong] of [["g3", 64, true], ["g4", 64, false]]) { const g = document.getElementById(id);
+  for (let x = 0; x < n; x++) { const b = document.createElement("i"); const a = 0.2 + Math.abs(Math.sin(x * .37) * Math.cos(x * .11)) * .8;
+    b.style.height = Math.round(a * 76) + "px"; if (potong && x / n > .38) b.style.opacity = .45; g.insertBefore(b, g.querySelector(".pos") || null); } }
+// grafik nada: garis not pas, nada asli bergoyang, sesudah Magic rapi
+const svg = document.getElementById("gr"), ns = "http://www.w3.org/2000/svg", not = [60, 46, 46, 34, 46, 60, 60, 72];
+for (const y of [34, 46, 60, 72]) { const r = document.createElementNS(ns, "rect"); r.setAttribute("x", 0); r.setAttribute("y", y - 3); r.setAttribute("width", 340); r.setAttribute("height", 6); r.setAttribute("fill", "rgba(255,255,255,.07)"); svg.appendChild(r); }
+let asli = "", rapi = "";
+for (let x = 0; x <= 340; x += 2) { const i = Math.min(not.length - 1, Math.floor(x / 42.5)), t = (x % 42.5) / 42.5, y = not[i];
+  const goyang = Math.sin(x * .45) * 1.6 + (i % 3 === 1 ? 5 : i % 3 === 2 ? -4 : 2) * (1 - t * .3);
+  asli += (x ? "L" : "M") + x + " " + (y + goyang).toFixed(1); rapi += (x ? "L" : "M") + x + " " + (y + Math.sin(x * .45) * .9).toFixed(1); }
+for (const [d, w, c] of [[asli, 1.4, "rgba(255,255,255,.45)"], [rapi, 2.2, getComputedStyle(document.documentElement).getPropertyValue("--p")]]) {
+  const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); p.setAttribute("fill", "none"); p.setAttribute("stroke", c); p.setAttribute("stroke-width", w); svg.appendChild(p); }
+</script>
+</body>
+</html>

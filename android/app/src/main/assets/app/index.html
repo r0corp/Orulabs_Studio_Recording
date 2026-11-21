@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id" data-ol-skin="glass-dark" data-warna="mawar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Oru Studio</title>
+<link rel="stylesheet" href="../vendor/inter/inter.css">
+<link rel="stylesheet" href="../vendor/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="oru.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== Karaoke ===== -->
+  <section class="hal on" id="hKaraoke">
+    <header class="atas">
+      <img class="ikon" src="../assets/brand/ikon-studio.svg" alt="">
+      <div class="nama"><b>Oru Studio</b><span id="subKaraoke">Karaoke &amp; rekam</span></div>
+    </header>
+    <div class="isi" id="isiKaraoke">
+      <form class="cari" id="cari" autocomplete="off">
+        <i class="bi bi-youtube"></i>
+        <input id="kata" type="search" enterkeyhint="search" placeholder="Cari lagu karaoke di YouTube…">
+        <button type="button" class="hapus-kata" id="hapusKata" hidden><i class="bi bi-x-lg"></i></button>
+      </form>
+      <div class="riwayat" id="riwayatCari" hidden></div>
+      <div class="vid" id="vidBox">
+        <div id="ytPlayer"></div>
+        <div class="vid-kosong" id="ytKosong"><i class="bi bi-music-note-beamed"></i><span>Cari lagu karaoke, lalu pilih dari daftar</span></div>
+        <button class="vid-siap" id="ytSiap" hidden><i class="bi bi-mic-fill"></i><span>Siap · lagu mulai saat Anda tekan rekam</span><small>Ketuk untuk putar tanpa merekam</small></button>
+      </div>
+      <div class="kini" id="kini" hidden>
+        <div><b id="ytJudul"></b><a id="ytChannel"></a></div>
+        <button class="mb" id="ytPlay" aria-label="Putar"><i class="bi bi-play-fill"></i></button>
+        <button class="mb" id="ytNext" aria-label="Berikutnya"><i class="bi bi-skip-forward-fill"></i></button>
+      </div>
+      <div class="panduan glass">
+        <i class="bi bi-volume-down-fill" id="ikonPanduan"></i>
+        <div class="tk">
+          <b>Musik panduan <em id="volNilai">–</em></b>
+          <input type="range" class="geser-in" id="volPanduan" min="0" max="15" value="4">
+          <small id="ketPanduan">Hanya volume speaker. Musik di rekaman tetap penuh &amp; jernih.</small>
+        </div>
+      </div>
+      <div class="iklan" id="catatanIklan" hidden><i class="bi bi-shield-check"></i><div><b>Tanpa iklan.</b> <span id="ketIklan">Iklan YouTube diblokir. Kalau ada yang lolos, rekaman berhenti sebentar dan lanjut sendiri.</span></div></div>
+      <div class="judul-kecil" id="kepalaDaftar"><span id="judulDaftar">Berikutnya</span><button class="sw-label" id="swAutoplay"><span>Putar otomatis</span><span class="sw off" id="swAuto"></span></button></div>
+      <div class="daftar-yt" id="kolom"></div>
+    </div>
+    <div class="perekam glass" id="perekam">
+      <div class="info">
+        <div class="waktu"><span class="d" id="titikRek" hidden></span><span id="waktuRek">00:00</span></div>
+        <div class="ket" id="ketRek">Tekan untuk mulai merekam</div>
+        <div class="pils" id="pilRek"><span class="pil"><i class="bi bi-mic"></i>Mic HP</span><span class="pil ok"><i class="bi bi-music-note"></i>Musik digital</span><span class="pil ok"><i class="bi bi-shield-check"></i>Tanpa iklan</span></div>
+        <div class="kapsul" id="kapsulRek" hidden>
+          <div class="kap"><i class="bi bi-mic-fill"></i><span class="ks"><i id="lvMic"></i></span></div>
+          <div class="kap"><i class="bi bi-music-note-beamed"></i><span class="ks"><i id="lvMusik"></i></span></div>
+        </div>
+      </div>
+      <button class="recbtn" id="btnRekam" aria-label="Rekam"><i class="bi bi-mic-fill"></i></button>
+    </div>
+  </section>
+
+  <!-- ===== Rekaman ===== -->
+  <section class="hal" id="hRekaman">
+    <header class="atas"><div class="nama"><b class="besar">Rekaman</b><span id="subRekaman">–</span></div></header>
+    <div class="isi gulir">
+      <div class="kosong-besar" id="belumPilih"><i class="bi bi-collection-play"></i><span>Pilih rekaman dari daftar di bawah, atau rekam lagu dulu di tab Karaoke.</span></div>
+      <div id="editor" hidden>
+        <div class="kartu glass">
+          <div class="kepala-h"><b id="judulRek"></b><button class="ikonb" id="btnGanti" aria-label="Ganti nama"><i class="bi bi-pencil"></i></button><button class="ikonb" id="btnHapus" aria-label="Hapus"><i class="bi bi-trash3"></i></button></div>
+          <div class="gelombang" id="gelombang">
+            <canvas id="wave"></canvas>
+            <div class="trim" id="trimL"></div><div class="trim kanan" id="trimR"></div>
+            <div class="pegangan" id="hL"><span></span></div><div class="pegangan" id="hR"><span></span></div>
+            <div class="label-posisi" id="labelPosisi" hidden></div>
+            <div class="gel-kosong" id="waveKosong" hidden>Memproses…</div>
+            <div class="ringkas-level" id="ringkasLevel" hidden></div>
+          </div>
+          <div class="waktu-h"><span id="posisiNow">00:00</span><span id="durasiTotal">00:00</span></div>
+          <div class="ctl">
+            <button class="main" id="btnPutar" aria-label="Putar"><i class="bi bi-play-fill"></i></button>
+            <div class="ab2" id="ab"><button data-v="asli" class="on">Asli</button><button data-v="studio">Studio</button></div>
+            <span style="flex:1"></span>
+            <button class="ikonb wa" id="btnWa" aria-label="Kirim ke WhatsApp"><i class="bi bi-whatsapp"></i></button>
+            <button class="ikonb" id="btnSimpan" aria-label="Simpan"><i class="bi bi-download"></i></button>
+          </div>
+          <div class="bilah-potong" id="bilahPotong" hidden>
+            <div class="pt-info"><i class="bi bi-scissors"></i><b id="potongWaktu"></b><span id="potongDurasi"></span></div>
+            <div class="pt-tombol">
+              <button class="btn kecil" id="ptPutar"><i class="bi bi-play-fill"></i>Putar bagian</button>
+              <button class="btn kecil" id="ptReset"><i class="bi bi-arrow-counterclockwise"></i>Reset</button>
+              <button class="btn kecil primary" id="ptSimpan"><i class="bi bi-check2"></i>Simpan potongan</button>
+            </div>
+          </div>
+        </div>
+        <div class="kartu glass mix" id="barisMix" hidden>
+          <i class="bi bi-mic-fill"></i><input type="range" class="geser-in" id="mixVokal" min="0" max="150" step="5"><em id="mixVokalNilai"></em>
+          <i class="bi bi-music-note-beamed"></i><input type="range" class="geser-in" id="mixMusik" min="0" max="150" step="5"><em id="mixMusikNilai"></em>
+          <i class="bi bi-arrow-left-right"></i><input type="range" class="geser-in" id="mixSinkron" min="-300" max="800" step="5"><em id="sinkronNilai"></em>
+        </div>
+        <div class="gaya" id="gayaRapikan" hidden>
+          <button data-g="1"><b>Natural</b><small>apa adanya</small></button>
+          <button data-g="2" class="on"><b>Video klip</b><small>jernih, maju</small></button>
+          <button data-g="3"><b>Hangat</b><small>lembut</small></button>
+        </div>
+        <div class="mv-status" id="mvStatus" hidden><i class="bi bi-magic"></i><div><b id="mvStatusJudul"></b><span id="mvStatusKet"></span></div></div>
+        <div class="dua">
+          <button class="aksi" id="btnRapikan"><i class="bi bi-sliders"></i><span>Mix Studio</span></button>
+          <button class="aksi lain" id="btnMagic"><i class="bi bi-magic"></i><span>Magic Vocal</span></button>
+        </div>
+        <div class="kartu glass" id="kartuNada" hidden>
+          <div class="kepala-nada"><b>Grafik nada</b><span id="nadaWaktu"></span><button class="ikonb kecil" id="nadaKiri"><i class="bi bi-chevron-left"></i></button><button class="ikonb kecil" id="nadaKanan"><i class="bi bi-chevron-right"></i></button></div>
+          <canvas id="kanvasNada"></canvas>
+          <div class="leg"><span><i style="background:#cbd5e1"></i>Nada asli</span><span><i style="background:#ec4899"></i>Sesudah Magic</span><span><i style="background:rgba(52,211,153,.6)"></i>Nada <em id="lgKunci"></em></span></div>
+        </div>
+      </div>
+      <div class="sek-j">Rekaman saya</div>
+      <div class="kartu glass daftar-rek" id="daftar"></div>
+    </div>
+  </section>
+
+  <!-- ===== Pengaturan ===== -->
+  <section class="hal" id="hPengaturan">
+    <header class="atas"><div class="nama"><b class="besar">Pengaturan</b><span>Oru Studio · versi <span id="versiApp">–</span></span></div></header>
+    <div class="isi gulir">
+      <div class="sek-j">Rekam</div>
+      <div class="kartu glass set-daftar">
+        <div class="set"><span>Keraskan otomatis<small>Vokal dinaikkan ke level pas, tidak pecah</small></span><span class="sw" id="swKeras"></span></div>
+        <div class="set"><span>Putar otomatis<small>Lagu berikutnya jalan sendiri (bukan saat merekam)</small></span><span class="sw" id="swAuto2"></span></div>
+        <div class="set"><span>Folder rekaman<small id="folderRekaman">–</small></span></div>
+      </div>
+      <div class="sek-j">Tampilan</div>
+      <div class="kartu glass set-daftar">
+        <div class="set"><span>Warna tema</span><span class="wr" id="warna"></span></div>
+        <div class="seg" id="tema"><button data-m="glass-dark"><i class="bi bi-moon-stars-fill"></i>Gelap</button><button data-m="glass-light"><i class="bi bi-sun-fill"></i>Terang</button></div>
+      </div>
+      <div class="sek-j">Aplikasi</div>
+      <div class="kartu glass set-daftar">
+        <div class="set"><span>Pembaruan<small id="ketUpdate">Update otomatis dari GitHub</small></span><button class="btn kecil" id="btnCekUpdate"><i class="bi bi-arrow-repeat"></i>Cek update</button></div>
+        <div class="set"><span>Iklan YouTube diblokir<small id="ketBlokir">–</small></span></div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="nav">
+    <button class="on" data-hal="hKaraoke"><i class="bi bi-music-note-beamed"></i>Karaoke</button>
+    <button data-hal="hRekaman"><i class="bi bi-collection-play"></i>Rekaman</button>
+    <button data-hal="hPengaturan"><i class="bi bi-gear"></i>Pengaturan</button>
+  </nav>
+
+  <!-- ===== Magic Vocal (lembar dari bawah) ===== -->
+  <div class="lembar-latar" id="mvLatar" hidden>
+    <div class="lembar" id="mvLembar">
+      <div class="tarik"></div>
+      <h3><i class="bi bi-magic"></i>Magic Vocal</h3>
+      <div class="kunci">
+        <div><small>Kunci lagu</small><b id="mvKunci">…</b></div>
+        <span id="mvKunciKet">Membaca kunci lagu…</span>
+        <select id="mvPilihKunci" class="btn kecil"></select>
+      </div>
+      <div class="tingkat" id="mvTingkat">
+        <button data-tk="natural"><b>Natural</b><small>halus</small></button>
+        <button data-tk="pop" class="on"><b>Pop</b><small>rapi</small></button>
+        <button data-tk="autotune"><b>Autotune</b><small>efek</small></button>
+      </div>
+      <div class="mv-kekuatan"><span>Kekuatan</span><input type="range" class="geser-in" id="mvKekuatan" min="0" max="100"><em id="mvKekuatanNilai"></em></div>
+      <button class="aksi" id="mvProses"><i class="bi bi-stars"></i><span>Proses Magic Vocal</span></button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+<script type="module" src="oru.js"></script>
+</body>
+</html>
