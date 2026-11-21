@@ -779,3 +779,11 @@ canvas { display: block; width: 100%; height: 100%; }
 .vmeter.kapsul .ik { text-align: center; font-size: 13px; color: var(--muted); line-height: 1; }
 .vmeter.kapsul .ik.in { color: var(--p); }
 .vmeter.kapsul .ik small { display: block; font: 700 8.5px Inter, sans-serif; letter-spacing: .05em; margin-top: 3px; }
+
+/* Label meter: ikon saja, nama muncul di atas ikon saat disorot (kartu Perekam memotong yang keluar ke bawah) */
+.vmeter.kapsul .ik { font-size: 14px; padding: 2px 0; cursor: default; }
+.vmeter.kapsul .ik:hover { color: var(--text); }
+[data-tip].tip-atas:hover::after { top: auto; bottom: calc(100% + 6px); }
+.vmeter.kapsul .ik.in:hover::after { left: -6px; transform: none; }
+
+.vmeter.kapsul { position: relative; z-index: 5; }
