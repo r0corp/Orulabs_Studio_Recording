@@ -917,6 +917,12 @@ function segarkanTeks() {
   tampilkanKolom();
   // Langsung tersambung: aktifkan mode audio terakhir (Studio Rumah / Laptop)
   await aktifkanMode(P.modeAudio, true);
-  setInterval(() => api("ping").catch(() => {}), 20000); api("ping").catch(() => {});
+  // Ping supaya server tahu jendela masih terbuka; sekaligus cek versi server.
+  // Bila versi berubah (aplikasi baru diperbarui), muat ulang supaya tampilan ikut versi baru.
+  let versiAwal = null;
+  const ping = async () => {
+    try { await api("ping"); const v = (await apiJson("versi")).versi; if (versiAwal === null) versiAwal = v; else if (v !== versiAwal && !M.rek) location.reload(); } catch {}
+  };
+  setInterval(ping, 10000); ping();
   cekUpdate(false);
 })();
