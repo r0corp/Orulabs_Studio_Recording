@@ -597,3 +597,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .rekam-a.on { width: 36px; height: 36px; border-radius: 9px; }
 .rec .perangkat { padding: 6px 9px; font-size: 10.5px; line-height: 1.4; margin-top: 2px; }
 .rec .ready { justify-content: safe center; }
+/* cincin SVG menutupi tombol (posisi absolut di atasnya): biarkan klik tembus ke tombol */
+.tombol-a svg { pointer-events: none; }
+.rekam-a { position: relative; z-index: 1; }

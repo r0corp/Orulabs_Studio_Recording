@@ -320,7 +320,7 @@ function perbaruiSiap() {
   setCek("#cekInput", inputOk, t("cekMic")); $("#cekInput").title = M.labelInput || "";
   setCek("#cekOutput", outputOk, t("cekSpeaker")); $("#cekOutput").title = prof.output || "";
   setCek("#cekLevel", dbMaks > -30 && dbMaks < -3, t("cekLvl")); $("#cekLevel").title = dbMaks >= -3 ? t("terlaluKeras") : dbMaks <= -30 ? t("levelPelan") : t("levelPas");
-  setCek("#cekYt", YT.status === 1, t("cekYtSingkat")); $("#cekYt").title = YT.status === 1 ? t("ytJalan") : t("ytDiam");
+  setCek("#cekYt", YT.status === 1, t("cekYtSingkat")); $("#cekYt").title = YT.status === 1 ? t("ytJalan") : YT.status === 5 ? t("laguSiapPendek") : t("ytDiam");
   $("#cekYt i").className = "bi " + (YT.status === 1 ? "bi-play-circle-fill" : "bi-pause-circle-fill");
   $("#siapTeks").textContent = inputOk ? (M.rek ? t("merekamChip") : t("siapRekam")) : (P.modeAudio === "rumah" ? t("cekConverter") : t("cekMic"));
   $("#siapDot").style.background = inputOk ? (M.rek ? "#ff4d5e" : "") : "#fbbf24";
@@ -778,7 +778,7 @@ function tampilkanKolom() {
       (c.tab === "videos" && c.item && c.item.length ? '<button class="btn primary" id="putarSemuaCh"><i class="bi bi-play-fill"></i>' + esc(t("putarSemua")) + "</button>" : "") + "</div>" +
       '<div class="daftar-yt">' + (!c.item ? '<div class="info">' + esc(t("memuat")) + "</div>" : c.item.length ? c.item.map((v, i) => kartuVideo(v, i, { tanpaChannel: true, thumb: v.jenis === "playlist" ? null : v.id })).join("") : '<div class="info">' + esc(t("tidakAdaHasil")) + "</div>") + "</div>";
     k.querySelectorAll("[data-tab-ch]").forEach((b) => (b.onclick = () => bukaChannel(c.url, b.dataset.tabCh)));
-    if ($("#putarSemuaCh")) $("#putarSemuaCh").onclick = () => mulaiAntrian({ jenis: "channel", judul: c.nama, item: c.item.filter((v) => v.jenis === "video") }, 0);
+    if ($("#putarSemuaCh")) $("#putarSemuaCh").onclick = () => mulaiAntrian({ jenis: "channel", judul: c.nama, item: c.item.filter((v) => v.jenis === "video") }, 0, true);
     if (c.item) {
       // Gambar kecil playlist channel: pakai gambar video pertama yang tersedia dari YouTube
       k.querySelectorAll(".vi").forEach((el) => { const v = c.item[+el.dataset.i]; if (v.jenis === "playlist") el.querySelector(".th").style.backgroundImage = "linear-gradient(135deg, rgba(var(--p-rgb),.8), rgba(0,0,0,.6))"; });
@@ -922,15 +922,19 @@ async function bukaChannel(url, tab = "videos") {
 }
 $("#ytChannel").onclick = () => { if (YT.kini && YT.kini.url) bukaChannel(YT.kini.url); };
 
-function mulaiAntrian(a, i) {
+function mulaiAntrian(a, i, langsung = false) {
   if (!a.item.length) return;
   YT.antrian = { ...a, i: Math.max(0, i), acak: a.acak || false, ulangi: a.ulangi !== false };
   YT.tampilan = "berikutnya";
-  putarVideo(YT.antrian.item[YT.antrian.i]);
+  putarVideo(YT.antrian.item[YT.antrian.i], langsung);
 }
 
-/** Putar satu video lalu ambil "Berikutnya" dan data channel dari YouTube. */
-async function putarVideo(v) {
+/**
+ * Buka satu video lalu ambil "Berikutnya" dan data channel dari YouTube.
+ * langsung=false (memilih lagu): video hanya disiapkan, menunggu tombol Rekam (rekam bersama lagu) atau Putar (dengar saja).
+ * langsung=true (Putar semua, Berikutnya, Sebelumnya, putar otomatis): langsung diputar.
+ */
+async function putarVideo(v, langsung = false) {
   if (!v) return;
   if (!YT.siap) { toast(t("ytBelumSiap"), true); return; }
   if (YT.kini && YT.kini.id !== v.id) YT.sejarah.push(YT.kini);
@@ -941,13 +945,14 @@ async function putarVideo(v) {
   tampilkanKini();
   if (!YT.pemutar) {
     YT.pemutar = new YT_API.Player("ytPlayer", {
-      videoId: v.id, playerVars: { autoplay: 1, rel: 0, playsinline: 1, origin: location.origin },
+      videoId: v.id, playerVars: { autoplay: langsung ? 1 : 0, rel: 0, playsinline: 1, origin: location.origin },
       events: {
         onStateChange: (e) => { YT.status = e.data; perbaruiTombolYt(); perbaruiSiap(); if (e.data === 0) laguSelesai(); },
         onError: (e) => { if ([100, 101, 150].includes(e.data)) { toast(t("ytTidakBoleh"), true); laguBerikutnya(); } },
       },
     });
-  } else YT.pemutar.loadVideoById(v.id);
+  } else if (langsung) YT.pemutar.loadVideoById(v.id); else YT.pemutar.cueVideoById(v.id);
+  if (!langsung && !M.rek) toast(t("laguSiap"));
   tampilkanKolom();
   try {
     const j = await apiJson("terkait?" + q({ id: v.id }));
@@ -978,9 +983,9 @@ function laguBerikutnya() {
   if (a) {
     let i = a.acak ? Math.floor(Math.random() * a.item.length) : a.i + 1;
     if (i >= a.item.length) { if (!a.ulangi) { YT.antrian = null; } else i = 0; }
-    if (YT.antrian) { a.i = i; putarVideo(a.item[i]); return; }
+    if (YT.antrian) { a.i = i; putarVideo(a.item[i], true); return; }
   }
-  if (YT.terkait && YT.terkait.length) putarVideo(YT.terkait[0]);
+  if (YT.terkait && YT.terkait.length) putarVideo(YT.terkait[0], true);
 }
 function laguSelesai() {
   if (M.rek && M.bersamaYt) { toast(t("laguBerhenti")); selesaiRekam(); return; }
@@ -989,12 +994,12 @@ function laguSelesai() {
 $("#ytNext").onclick = laguBerikutnya;
 $("#ytPrev").onclick = () => {
   const a = YT.antrian;
-  if (a && a.i > 0) { a.i--; putarVideo(a.item[a.i]); return; }
-  const sebelum = YT.sejarah.pop(); if (sebelum) { putarVideo(sebelum); YT.sejarah.pop(); }
+  if (a && a.i > 0) { a.i--; putarVideo(a.item[a.i], true); return; }
+  const sebelum = YT.sejarah.pop(); if (sebelum) { putarVideo(sebelum, true); YT.sejarah.pop(); }
 };
 $("#ytPlay").onclick = () => {
   const p = YT.pemutar;
-  if (!p) { if (YT.cari.item && YT.cari.item.length) putarVideo(YT.cari.item[0]); else $("#kata").focus(); return; }
+  if (!p) { if (YT.cari.item && YT.cari.item.length) putarVideo(YT.cari.item[0], true); else $("#kata").focus(); return; }
   if (YT.status === 1 || YT.status === 3) p.pauseVideo(); else p.playVideo();
 };
 
