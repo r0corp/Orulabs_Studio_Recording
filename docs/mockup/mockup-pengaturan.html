@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="id" data-ol-skin="glass-dark" data-warna="mawar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Pengaturan ringkas</title>
+<link rel="stylesheet" href="../../web/vendor/inter/inter.css">
+<link rel="stylesheet" href="../../web/vendor/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../web/app.css">
+<style>
+/* ===== Mockup: Pengaturan ringkas + dropdown kaca ===== */
+body { overflow: hidden; }
+.laci-latar { display: block; }
+.laci { width: 420px; }
+.laci .badan { padding: 4px 16px 16px; }
+.sek { padding: 12px 0; }
+.sek h4 { margin: 0 0 8px; display: flex; align-items: center; justify-content: space-between; }
+/* baris ringkas: ikon + nama kiri, kontrol kanan */
+.rb { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.rb + .rb { border-top: 1px solid var(--border); }
+.rb > i { width: 18px; text-align: center; color: var(--p); font-size: 15px; }
+.rb > .nm { flex: 1; min-width: 0; font-size: 13px; }
+.rb > .nm small { display: block; font-size: 11px; color: var(--muted); }
+.kotak { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 2px 12px; }
+/* dropdown kaca */
+.dd { position: relative; width: 200px; flex: none; }
+.dd-btn { width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(255,255,255,.06); color: var(--text); font: 500 12.5px Inter, sans-serif; cursor: pointer; }
+.dd-btn span { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-btn .bi-chevron-down { color: var(--muted); font-size: 11px; transition: transform .2s; }
+.dd.buka .dd-btn { border-color: rgba(var(--p-rgb), .8); box-shadow: 0 0 0 3px rgba(var(--p-rgb), .18); }
+.dd.buka .dd-btn .bi-chevron-down { transform: rotate(180deg); }
+.dd-menu { position: absolute; right: 0; top: calc(100% + 6px); width: 280px; z-index: 5; padding: 6px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)) , var(--solid); border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); animation: muncul .16s ease-out; }
+[data-ol-skin="glass-light"] .dd-menu { border-color: rgba(15,23,42,.12); box-shadow: 0 18px 44px rgba(15,23,42,.18); }
+[data-ol-skin="glass-light"] .dot5 b.on { border-color: #0f172a; }
+@keyframes muncul { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.label-mock { z-index: 99; }
+.dd-menu .kep { padding: 6px 10px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.dd-menu .op { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; cursor: pointer; }
+.dd-menu .op i:first-child { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-2); color: var(--p); font-size: 13px; flex: none; }
+.dd-menu .op span { flex: 1; min-width: 0; }
+.dd-menu .op small { display: block; font-size: 10.5px; color: var(--muted); }
+.dd-menu .op .bi-check2 { color: var(--p); font-size: 15px; }
+.dd-menu .op.on { background: rgba(var(--p-rgb), .18); }
+.dd-menu .op.sorot { background: var(--surface-2); }
+/* pilihan mode audio */
+.seg.besar button { height: 38px; font-size: 12.5px; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: #34d399; text-transform: none; letter-spacing: 0; }
+.status i { width: 7px; height: 7px; border-radius: 50%; background: #34d399; }
+.tips { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(251,191,36,.10); border: 1px solid rgba(251,191,36,.3); font-size: 11.5px; }
+.tips i { color: var(--warn); }
+.tips a { margin-left: auto; color: var(--p); font-weight: 600; white-space: nowrap; }
+.dot5 { display: flex; gap: 7px; }
+.dot5 b { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; }
+.dot5 b.on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.25); }
+.seg.ikon button { width: 36px; height: 28px; }
+.seg.ikon { grid-auto-columns: auto; }
+.label-mock { position: fixed; right: 20px; bottom: 16px; padding: 6px 12px; border-radius: 10px; background: #fbbf24; color: #1b1300; font: 700 12px Inter, sans-serif; }
+</style>
+</head>
+<body>
+<div class="laci-latar">
+<div class="laci glass">
+  <div class="atas"><h3><i class="bi bi-gear"></i>Pengaturan</h3><button class="mini" style="font-size:18px"><i class="bi bi-x-lg"></i></button></div>
+  <div class="badan">
+
+    <div class="sek">
+      <h4>Mode audio <span class="status"><i></i>Siap merekam</span></h4>
+      <div class="seg besar"><button class="on"><i class="bi bi-sliders"></i>Studio Rumah</button><button><i class="bi bi-laptop"></i>Laptop</button></div>
+      <div class="kotak" style="margin-top:10px">
+        <div class="rb"><i class="bi bi-mic"></i><div class="nm">Rekam dari</div>
+          <div class="dd"><button class="dd-btn"><span>Microphone (C-Media)</span><i class="bi bi-chevron-down"></i></button></div></div>
+        <div class="rb"><i class="bi bi-youtube"></i><div class="nm">Speaker YouTube</div>
+          <div class="dd buka"><button class="dd-btn"><span>Headphones (PS-189)</span><i class="bi bi-chevron-down"></i></button>
+            <div class="dd-menu">
+              <div class="kep">Pilih speaker</div>
+              <div class="op on"><i class="bi bi-bluetooth"></i><span>Headphones (PS-189)<small>Bluetooth · bawaan Windows</small></span><i class="bi bi-check2"></i></div>
+              <div class="op sorot"><i class="bi bi-speaker"></i><span>Speakers (C-Media)<small>Lubang 3,5 mm laptop</small></span></div>
+              <div class="op"><i class="bi bi-cpu"></i><span>AI Noise-cancelling Output<small>ASUS Utility</small></span></div>
+            </div></div></div>
+        <div class="rb"><i class="bi bi-speaker"></i><div class="nm">Putar rekaman ke</div>
+          <div class="dd"><button class="dd-btn"><span>Speakers (C-Media)</span><i class="bi bi-chevron-down"></i></button></div></div>
+      </div>
+      <div class="tips"><i class="bi bi-lightbulb"></i><span>Suara naik-turun? Matikan Audio enhancements.</span><a>Buka setelan <i class="bi bi-box-arrow-up-right"></i></a></div>
+    </div>
+
+    <div class="sek">
+      <h4>Rekam</h4>
+      <div class="kotak">
+        <div class="rb"><i class="bi bi-graph-up-arrow"></i><div class="nm">Keraskan otomatis<small>Level pas, tidak pecah</small></div><span class="sw"></span></div>
+        <div class="rb"><i class="bi bi-link-45deg"></i><div class="nm">Rekam bersama lagu<small>Rekam/Stop ikut YouTube</small></div><span class="sw"></span></div>
+        <div class="rb"><i class="bi bi-collection-play"></i><div class="nm">Putar otomatis<small>Lanjut lagu berikutnya</small></div><span class="sw"></span></div>
+        <div class="rb"><i class="bi bi-volume-up"></i><div class="nm">Tes suara</div><button class="btn kecil"><i class="bi bi-play-fill"></i>Tes</button></div>
+      </div>
+    </div>
+
+    <div class="sek">
+      <h4>Tampilan &amp; bahasa</h4>
+      <div class="kotak">
+        <div class="rb"><i class="bi bi-palette"></i><div class="nm">Warna</div>
+          <div class="dot5"><b style="background:#0190fb"></b><b style="background:#8b5cf6"></b><b style="background:#14b8a6"></b><b style="background:#f97316"></b><b class="on" style="background:#f43f5e"></b></div></div>
+        <div class="rb"><i class="bi bi-circle-half"></i><div class="nm">Tema</div>
+          <div class="seg ikon"><button><i class="bi bi-moon-stars-fill"></i></button><button><i class="bi bi-sun-fill"></i></button><button class="on"><i class="bi bi-display"></i></button></div></div>
+        <div class="rb"><i class="bi bi-translate"></i><div class="nm">Bahasa</div>
+          <div class="dd" style="width:150px"><button class="dd-btn"><span>Indonesia</span><i class="bi bi-chevron-down"></i></button></div></div>
+      </div>
+    </div>
+
+    <div class="sek">
+      <h4>Lainnya</h4>
+      <div class="kotak">
+        <div class="rb"><i class="bi bi-folder2"></i><div class="nm">Folder rekaman<small>…\MUSIC\Rekaman Karaoke</small></div><button class="btn kecil"><i class="bi bi-folder2-open"></i>Buka</button></div>
+        <div class="rb"><img src="../../web/assets/brand/ikon-studio.svg" style="width:18px;height:18px"><div class="nm">Versi 1.1.17<small>Sudah versi terbaru</small></div><button class="btn kecil"><i class="bi bi-arrow-repeat"></i>Cek update</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+<div class="label-mock">MOCKUP · belum diterapkan</div>
+</body>
+</html>

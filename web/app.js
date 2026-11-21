@@ -134,23 +134,52 @@ async function muatAudio() {
   tebakProfil();
 }
 
+// ================= Dropdown kaca (pengganti <select> bawaan) =================
+function tutupDropdown() { $$(".dd.buka").forEach((d) => { d.classList.remove("buka"); const m = d.querySelector(".dd-menu"); if (m) m.hidden = true; }); }
+document.addEventListener("click", tutupDropdown);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") tutupDropdown(); });
+/** Pasang dropdown kaca di elemen .dd. opsi: [{ nilai, label, ket, ikon }]. */
+function dropdown(el, { opsi, nilai, kepala, onPilih }) {
+  el.innerHTML = '<button type="button" class="dd-btn"><span></span><i class="bi bi-chevron-down"></i></button><div class="dd-menu" hidden></div>';
+  const btn = el.querySelector(".dd-btn"), menu = el.querySelector(".dd-menu");
+  const isi = () => {
+    const p = opsi.find((o) => o.nilai === nilai); btn.querySelector("span").textContent = p ? p.label : "–"; btn.title = p ? p.label : "";
+    menu.innerHTML = (kepala ? '<div class="dd-kep">' + esc(kepala) + "</div>" : "") + opsi.map((o, i) =>
+      '<div class="dd-op' + (o.nilai === nilai ? " on" : "") + '" data-i="' + i + '">' + (o.ikon ? '<i class="bi ' + o.ikon + '"></i>' : "") +
+      "<span>" + esc(o.label) + (o.ket ? "<small>" + esc(o.ket) + "</small>" : "") + "</span>" + (o.nilai === nilai ? '<i class="bi bi-check2"></i>' : "") + "</div>").join("");
+  };
+  isi();
+  btn.onclick = (e) => { e.stopPropagation(); const buka = menu.hidden; tutupDropdown(); if (buka) { menu.hidden = false; el.classList.add("buka"); } };
+  menu.onclick = (e) => { e.stopPropagation(); const op = e.target.closest(".dd-op"); if (!op) return; const o = opsi[+op.dataset.i]; tutupDropdown(); if (o.nilai === nilai) return; nilai = o.nilai; isi(); onPilih(o.nilai); };
+}
+/** Keterangan + ikon perangkat audio untuk dropdown. */
+function infoPerangkat(n, arah, ada) {
+  const masuk = arah === "input", bawaan = n === (masuk ? AUDIO.bawaanInput : AUDIO.bawaanOutput);
+  let ket = t("ketLain"), ikon = masuk ? "bi-mic" : "bi-speaker";
+  if (/C-Media|Realtek/i.test(n)) ket = t("ketJack");
+  else if (/YA USB|USB/i.test(n)) { ket = t("ketUsb"); ikon = "bi-usb-symbol"; }
+  else if (/Headset|Hands-Free/i.test(n)) { ket = t("ketBtTelp"); ikon = "bi-headset"; }
+  else if (/AI Noise/i.test(n)) { ket = t("ketAsus"); ikon = "bi-cpu"; }
+  else if (/Headphones|Bluetooth/i.test(n)) ikon = "bi-headphones";
+  if (!ada) { ket = t("ketTidakAda"); ikon = "bi-x-circle"; }
+  else if (bawaan) ket += " · " + t("ketBawaan");
+  return { nilai: n, label: n.replace(/\(R\)/g, ""), ket, ikon };
+}
 function isiPengaturanAudio() {
-  for (const mode of ["rumah", "laptop"]) {
-    for (const arah of ["input", "output", "putar"]) {
-      const sel = $('[data-pilih="' + mode + "-" + arah + '"]'), daftar = AUDIO[arah === "putar" ? "output" : arah], kini = P.profil[mode][arah];
-      const opsi = daftar.slice(); if (kini && !opsi.includes(kini)) opsi.unshift(kini);
-      sel.innerHTML = opsi.map((n) => '<option value="' + esc(n) + '">' + esc(n) + (daftar.includes(n) ? "" : " ✕") + "</option>").join("");
-      sel.value = kini;
-      sel.onchange = () => { P.profil[mode][arah] = sel.value; simpanPengaturan(); if (P.modeAudio === mode) aktifkanMode(mode, true); };
-    }
-    $('.profil[data-profil="' + mode + '"]').classList.toggle("on", P.modeAudio === mode);
-    const b = $('[data-aktifkan="' + mode + '"]');
-    b.textContent = P.modeAudio === mode ? t("aktif") : t("aktifkan");
-    b.className = "btn kecil" + (P.modeAudio === mode ? " primary" : "");
-    b.onclick = () => aktifkanMode(mode);
+  const mode = P.modeAudio;
+  $$("#pilihModeAudio button").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+  for (const arah of ["input", "output", "putar"]) {
+    const daftar = AUDIO[arah === "putar" ? "output" : arah], kini = P.profil[mode][arah];
+    const opsi = daftar.map((n) => infoPerangkat(n, arah, true));
+    if (kini && !daftar.includes(kini)) opsi.unshift(infoPerangkat(kini, arah, false));
+    dropdown($('[data-pilih-arah="' + arah + '"]'), { opsi, nilai: kini, kepala: t(arah === "input" ? "pilihMic" : "pilihSpeaker"),
+      onPilih: (v) => { P.profil[mode][arah] = v; simpanPengaturan(); aktifkanMode(mode, true); } });
   }
+  dropdown($("#ddBahasa"), { opsi: [{ nilai: "id", label: "Indonesia", ikon: "bi-translate" }, { nilai: "en", label: "English", ikon: "bi-translate" }], nilai: P.bahasa, kepala: t("pilihBahasa"),
+    onPilih: (v) => { P.bahasa = v; aturBahasa(v); terapkanTema(); segarkanTeks(); simpanPengaturan(); } });
   apiJson("info").then((j) => ($("#folderRekaman").textContent = j.folder)).catch(() => {});
 }
+$$("#pilihModeAudio button").forEach((b) => (b.onclick = () => { if (!M.rek && P.modeAudio !== b.dataset.mode) aktifkanMode(b.dataset.mode); }));
 
 /**
  * Aktifkan mode audio: atur speaker & mic bawaan Windows (YouTube ikut pindah),
@@ -677,7 +706,7 @@ function aturTombol() {
   });
   $("#btnStop").disabled = !M.rek && !Pm.main;
   ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
-  $$("#modeAudio button").forEach((b) => (b.disabled = M.rek));
+  $$("#modeAudio button, #pilihModeAudio button").forEach((b) => (b.disabled = M.rek));
 }
 
 // ================= Studio =================

@@ -623,3 +623,52 @@ canvas { display: block; width: 100%; height: 100%; }
 .gaya-rapikan button.on { background: rgba(var(--p-rgb), .2); border-color: rgba(var(--p-rgb), .75); }
 .gaya-rapikan button.on b { background: var(--p); color: #fff; }
 .gaya-rapikan em { font-style: normal; margin-left: 4px; }
+
+/* ===== Pengaturan ringkas ===== */
+.laci { width: 420px; }
+.laci .badan { padding: 4px 16px 16px; }
+.laci .sek { padding: 12px 0; }
+.laci .sek h4 { margin: 0 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.laci .chip.status { padding: 2px 8px; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.seg.besar button { height: 38px; }
+.seg.ikon { grid-auto-columns: auto; }
+.seg.ikon button { width: 36px; height: 28px; }
+.pg-kotak { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 2px 12px; }
+.pg-baris { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 0; }
+.pg-baris + .pg-baris { border-top: 1px solid var(--border); }
+.pg-baris > i { width: 18px; text-align: center; color: var(--p); font-size: 15px; flex: none; }
+.pg-baris > img { width: 18px; height: 18px; flex: none; }
+.pg-baris > .nm { flex: 1; min-width: 0; font-size: 13px; }
+.pg-baris > .nm small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pg-tips { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(251,191,36,.10); border: 1px solid rgba(251,191,36,.3); font-size: 11.5px; }
+.pg-tips > i { color: var(--warn); }
+.pg-tips > span { flex: 1; min-width: 0; }
+.pg-tips button { border: 0; background: none; color: var(--p); font-weight: 600; font-size: 11.5px; white-space: nowrap; cursor: pointer; padding: 0; }
+.pg-warna { display: flex; gap: 7px; }
+.pg-warna button { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid transparent; background: none; display: grid; place-items: center; cursor: pointer; }
+.pg-warna button i { width: 18px; height: 18px; border-radius: 50%; display: block; }
+.pg-warna button.on { border-color: var(--text); }
+/* ===== Dropdown kaca ===== */
+.dd { position: relative; width: 205px; flex: none; }
+.dd.kecil { width: 150px; }
+.dd-btn { width: 100%; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(255,255,255,.06); color: var(--text); font: 500 12.5px Inter, sans-serif; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+[data-ol-skin="glass-light"] .dd-btn { background: rgba(255,255,255,.55); }
+.dd-btn:hover { border-color: rgba(var(--p-rgb), .5); }
+.dd-btn span { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-btn .bi-chevron-down { color: var(--muted); font-size: 11px; transition: transform .2s; }
+.dd.buka .dd-btn { border-color: rgba(var(--p-rgb), .8); box-shadow: 0 0 0 3px rgba(var(--p-rgb), .18); }
+.dd.buka .dd-btn .bi-chevron-down { transform: rotate(180deg); }
+.dd-menu { position: absolute; right: 0; top: calc(100% + 6px); width: max(100%, 280px); z-index: 30; padding: 6px; border-radius: 14px; max-height: 320px; overflow: auto;
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)), var(--solid); border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 18px 44px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); animation: dd-muncul .16s ease-out; }
+[data-ol-skin="glass-light"] .dd-menu { border-color: rgba(15,23,42,.12); box-shadow: 0 18px 44px rgba(15,23,42,.18); }
+@keyframes dd-muncul { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.dd-kep { padding: 6px 10px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.dd-op { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; cursor: pointer; }
+.dd-op > i:first-child { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-2); color: var(--p); font-size: 13px; flex: none; }
+.dd-op span { flex: 1; min-width: 0; }
+.dd-op small { display: block; font-size: 10.5px; color: var(--muted); }
+.dd-op .bi-check2 { color: var(--p); font-size: 15px; }
+.dd-op:hover, .dd-op.sorot { background: var(--surface-2); }
+.dd-op.on { background: rgba(var(--p-rgb), .18); }

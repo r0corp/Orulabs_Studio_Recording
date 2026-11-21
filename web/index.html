@@ -177,55 +177,51 @@
   <div class="laci glass">
     <div class="atas"><h3><i class="bi bi-gear"></i><span data-t="pengaturan"></span></h3><button class="mini" id="tutupPengaturan" style="font-size:18px"><i class="bi bi-x-lg"></i></button></div>
     <div class="badan">
+
       <div class="sek">
-        <div class="baris" style="margin-top:0"><h4 data-t="modeAudio" style="margin:0"></h4><span class="chip" id="siap"><span class="dot" id="siapDot"></span><span id="siapTeks">…</span></span></div>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px" data-t="modeAudioKet"></div>
-        <div class="profil" data-profil="rumah">
-          <div class="kepala"><i class="bi bi-sliders"></i><div><b data-t="modeRumah"></b><small data-t="rumahKet"></small></div><button class="btn kecil" data-aktifkan="rumah"></button></div>
-          <div class="lbl" data-t="rekamDari"></div><label class="select"><i class="bi bi-usb-symbol" style="color:var(--p)"></i><select data-pilih="rumah-input"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="speakerYoutube"></div><label class="select"><i class="bi bi-youtube" style="color:var(--p)"></i><select data-pilih="rumah-output"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="putarRekamanKe"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="rumah-putar"></select><i class="bi bi-chevron-down"></i></label>
+        <h4><span data-t="modeAudio"></span><span class="chip status" id="siap"><span class="dot" id="siapDot"></span><span id="siapTeks">…</span></span></h4>
+        <div class="seg besar" id="pilihModeAudio"><button data-mode="rumah"><i class="bi bi-sliders"></i><span data-t="modeRumah"></span></button><button data-mode="laptop"><i class="bi bi-laptop"></i><span data-t="modeLaptop"></span></button></div>
+        <div class="pg-kotak" style="margin-top:10px">
+          <div class="pg-baris"><i class="bi bi-mic"></i><div class="nm" data-t="rekamDari"></div><div class="dd" data-pilih-arah="input"></div></div>
+          <div class="pg-baris"><i class="bi bi-youtube"></i><div class="nm" data-t="speakerYoutube"></div><div class="dd" data-pilih-arah="output"></div></div>
+          <div class="pg-baris"><i class="bi bi-speaker"></i><div class="nm" data-t="putarRekamanKe"></div><div class="dd" data-pilih-arah="putar"></div></div>
         </div>
-        <div class="profil" data-profil="laptop">
-          <div class="kepala"><i class="bi bi-laptop"></i><div><b data-t="modeLaptop"></b><small data-t="laptopKet"></small></div><button class="btn kecil" data-aktifkan="laptop"></button></div>
-          <div class="lbl" data-t="rekamDari"></div><label class="select"><i class="bi bi-mic" style="color:var(--p)"></i><select data-pilih="laptop-input"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="speakerYoutube"></div><label class="select"><i class="bi bi-youtube" style="color:var(--p)"></i><select data-pilih="laptop-output"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="putarRekamanKe"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="laptop-putar"></select><i class="bi bi-chevron-down"></i></label>
+        <div class="pg-tips"><i class="bi bi-lightbulb"></i><span data-t="tipsEfek"></span><button id="btnSetelanSuara"><span data-t="bukaSetelan"></span> <i class="bi bi-box-arrow-up-right"></i></button></div>
+      </div>
+
+      <div class="sek">
+        <h4 data-t="sekRekam"></h4>
+        <div class="pg-kotak">
+          <div class="pg-baris"><i class="bi bi-graph-up-arrow"></i><div class="nm"><span data-t="keraskanSingkat"></span><small data-t="keraskanSingkatK"></small></div><span class="sw" id="swKeraskan"></span></div>
+          <div class="pg-baris"><i class="bi bi-link-45deg"></i><div class="nm"><span data-t="sinkronSingkat"></span><small data-t="sinkronSingkatK"></small></div><span class="sw" id="swSinkron"></span></div>
+          <div class="pg-baris"><i class="bi bi-collection-play"></i><div class="nm"><span data-t="autoplay"></span><small data-t="autoplaySingkatK"></small></div><span class="sw" id="swAutoplay"></span></div>
+          <div class="pg-baris"><i class="bi bi-volume-up"></i><div class="nm" data-t="tesSuara"></div><button class="btn kecil" id="btnTesSuara"><i class="bi bi-play-fill"></i><span data-t="tes"></span></button></div>
         </div>
-        <div class="panduan">
-          <i class="bi bi-lightbulb"></i>
-          <div><b data-t="panduanJudul"></b><span data-t="panduanIsi"></span>
-            <button class="btn kecil" id="btnSetelanSuara"><i class="bi bi-box-arrow-up-right"></i><span data-t="bukaSetelanSuara"></span></button></div>
+      </div>
+
+      <div class="sek">
+        <h4 data-t="sekTampilan"></h4>
+        <div class="pg-kotak">
+          <div class="pg-baris"><i class="bi bi-palette"></i><div class="nm" data-t="warna"></div>
+            <div class="pg-warna" id="warna">
+              <button data-w="biru" title="Biru"><i style="background:#0190fb"></i></button>
+              <button data-w="ungu" title="Ungu"><i style="background:#8b5cf6"></i></button>
+              <button data-w="tosca" title="Tosca"><i style="background:#14b8a6"></i></button>
+              <button data-w="senja" title="Senja"><i style="background:#f97316"></i></button>
+              <button data-w="mawar" title="Mawar"><i style="background:#f43f5e"></i></button>
+            </div></div>
+          <div class="pg-baris"><i class="bi bi-circle-half"></i><div class="nm" data-t="tema"></div>
+            <div class="seg ikon" id="tema"><button data-m="glass-dark" data-t-title="gelap"><i class="bi bi-moon-stars-fill"></i></button><button data-m="glass-light" data-t-title="terang"><i class="bi bi-sun-fill"></i></button><button data-m="auto" data-t-title="ikutiWindows"><i class="bi bi-display"></i></button></div></div>
+          <div class="pg-baris"><i class="bi bi-translate"></i><div class="nm" data-t="bahasa"></div><div class="dd kecil" id="ddBahasa"></div></div>
         </div>
-        <div class="baris"><span><span data-t="keraskanOto"></span><small data-t="keraskanOtoK"></small></span><span class="sw" id="swKeraskan"></span></div>
-        <div class="baris"><span><span data-t="sinkronYt"></span><small data-t="sinkronYtK"></small></span><span class="sw" id="swSinkron"></span></div>
-        <div class="baris"><span><span data-t="autoplay"></span><small data-t="autoplayK"></small></span><span class="sw" id="swAutoplay"></span></div>
-        <div class="baris"><span></span><button class="btn kecil" id="btnTesSuara"><i class="bi bi-volume-up"></i><span data-t="tesSuara"></span></button></div>
       </div>
+
       <div class="sek">
-        <h4 data-t="tampilan"></h4>
-        <div style="font-size:13px;margin-bottom:8px" data-t="warnaTema"></div>
-        <div class="warna-pilih" id="warna">
-          <button data-w="biru"><i style="background:#0190fb"></i>Biru</button>
-          <button data-w="ungu"><i style="background:#8b5cf6"></i>Ungu</button>
-          <button data-w="tosca"><i style="background:#14b8a6"></i>Tosca</button>
-          <button data-w="senja"><i style="background:#f97316"></i>Senja</button>
-          <button data-w="mawar"><i style="background:#f43f5e"></i>Mawar</button>
+        <h4 data-t="sekLainnya"></h4>
+        <div class="pg-kotak">
+          <div class="pg-baris"><i class="bi bi-folder2"></i><div class="nm"><span data-t="folder"></span><small id="folderRekaman"></small></div><button class="btn kecil" id="btnBukaFolder"><i class="bi bi-folder2-open"></i><span data-t="buka"></span></button></div>
+          <div class="pg-baris"><img src="assets/brand/ikon-studio.svg" alt=""><div class="nm"><span><span data-t="versi"></span> <span id="versiApp">–</span></span><small>© Orulabs</small></div><button class="btn kecil" id="btnCekUpdate"><i class="bi bi-arrow-repeat"></i><span data-t="cekUpdate"></span></button></div>
         </div>
-        <div style="font-size:13px;margin:14px 0 8px" data-t="mode"></div>
-        <div class="seg" id="tema"><button data-m="glass-dark"><i class="bi bi-moon-stars-fill"></i><span data-t="gelap"></span></button><button data-m="glass-light"><i class="bi bi-sun-fill"></i><span data-t="terang"></span></button><button data-m="auto"><i class="bi bi-circle-half"></i><span data-t="ikutiWindows"></span></button></div>
-      </div>
-      <div class="sek">
-        <h4 data-t="bahasa"></h4>
-        <div class="seg" id="bahasa"><button data-l="id">Indonesia</button><button data-l="en">English</button></div>
-      </div>
-      <div class="sek">
-        <h4 data-t="penyimpanan"></h4>
-        <div class="baris"><span><span data-t="folder"></span><small id="folderRekaman"></small></span><button class="btn kecil" id="btnBukaFolder"><i class="bi bi-folder2-open"></i><span data-t="buka"></span></button></div>
-      </div>
-      <div class="sek">
-        <div class="ikonbesar"><img src="assets/brand/ikon-studio.svg" alt=""><div style="flex:1"><b>Orulabs Studio Recording</b><div style="font-size:12px;color:var(--muted)"><span data-t="versi"></span> <span id="versiApp">–</span> · © Orulabs</div></div>
-          <button class="btn kecil" id="btnCekUpdate"><i class="bi bi-arrow-repeat"></i><span data-t="cekUpdate"></span></button></div>
         <div class="update-info" id="infoUpdate" hidden>
           <div><b id="judulUpdate"></b><small id="catatanUpdate"></small></div>
           <button class="btn primary kecil" id="btnPasangUpdate"><i class="bi bi-download"></i><span data-t="updateSekarang"></span></button>
