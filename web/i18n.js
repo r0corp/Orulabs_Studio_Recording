@@ -25,7 +25,7 @@ export const KAMUS = {
     pecah: "Pecah", senyap: "Bagian senyap", bass: "Bass", vokalJelas: "Vokal jelas", keseimbangan: "Keseimbangan nada", pilihUntukAnalisa: "Pilih rekaman untuk melihat analisa.",
     tampilan: "Tampilan", warnaTema: "Warna tema", mode: "Mode", gelap: "Gelap", terang: "Terang", ikutiWindows: "Ikuti Windows", bahasa: "Bahasa",
     modeAudio: "Mode audio", modeAudioKet: "Pilih mode, lalu perangkat rekam, speaker Windows, dan volume langsung diatur otomatis.",
-    rumahKet: "Mixer + converter. YouTube dan rekaman keluar lewat Bluetooth mixer.", laptopKet: "Tanpa alat tambahan: mic dan speaker laptop.",
+    rumahKet: "Mixer + converter. YouTube lewat Bluetooth mixer, rekaman bisa diputar di speaker laptop.", laptopKet: "Tanpa alat tambahan: mic dan speaker laptop.",
     rekamDari: "Rekam dari", speakerMode: "Speaker (YouTube & rekaman)", aktifkan: "Aktifkan", aktif: "Aktif",
     tesSuara: "Tes suara", keraskanOto: "Keraskan otomatis saat merekam", keraskanOtoK: "Rekaman dinaikkan ke level pas, dibatasi supaya tidak pecah",
     autoplayK: "Lagu berikutnya jalan sendiri setelah lagu selesai",
@@ -41,7 +41,7 @@ export const KAMUS = {
     kunciTersimpan: "Kunci Claude tersimpan", kunciDihapus: "Kunci Claude dihapus", modeDiaktifkan: "Mode diaktifkan",
     converterTidakAda: "Converter tidak ditemukan. Colok converter + splitter, lalu aktifkan lagi.", ytGagal: "Pemutar YouTube tidak bisa dimuat. Cek koneksi internet.",
     ytTidakBoleh: "Video ini tidak boleh diputar di aplikasi lain. Lanjut ke lagu berikutnya.", ytBelumSiap: "Pemutar YouTube belum siap, tunggu sebentar.",
-    playlistDitambah: "Playlist ditambahkan", cekUpdate: "Cek update", updateSekarang: "Update sekarang", versiBaru: "Versi baru tersedia", sudahTerbaru: "Sudah versi terbaru", memperbarui: "Memperbarui aplikasi…", memperbaruiKet: "Aplikasi akan terbuka lagi sebentar lagi. Jangan tutup jendela ini.", updateGagal: "Update gagal", rapikanOto: "Rapikan otomatis", berikutnyaKosong: "Putar satu lagu, saran lagu berikutnya dari YouTube muncul di sini.", rapikanOtoProses: "Merapikan…", dirapikan: "Rekaman dirapikan", rapikanSiap: "Rekaman baru siap. Tekan Rapikan otomatis supaya suaranya rapi.", playlistAda: "Playlist sudah ada", tesSuaraKet: "Bunyi tes diputar ke", dikeraskan: "dikeraskan",
+    playlistDitambah: "Playlist ditambahkan", cekUpdate: "Cek update", updateSekarang: "Update sekarang", versiBaru: "Versi baru tersedia", sudahTerbaru: "Sudah versi terbaru", memperbarui: "Memperbarui aplikasi…", memperbaruiKet: "Aplikasi akan terbuka lagi sebentar lagi. Jangan tutup jendela ini.", updateGagal: "Update gagal", rapikanOto: "Rapikan otomatis", riwayatCari: "Pencarian terakhir", speakerYoutube: "Speaker YouTube (karaoke)", putarRekamanKe: "Putar rekaman ke", putarRekaman: "Rekaman", hapusSemua: "Hapus semua", berikutnyaKosong: "Putar satu lagu, saran lagu berikutnya dari YouTube muncul di sini.", rapikanOtoProses: "Merapikan…", dirapikan: "Rekaman dirapikan", rapikanSiap: "Rekaman baru siap. Tekan Rapikan otomatis supaya suaranya rapi.", playlistAda: "Playlist sudah ada", tesSuaraKet: "Bunyi tes diputar ke", dikeraskan: "dikeraskan",
   },
   en: {
     nama: "Studio Recording", tagline: "Professional vocal recording",
@@ -68,7 +68,7 @@ export const KAMUS = {
     pecah: "Clipping", senyap: "Silent parts", bass: "Bass", vokalJelas: "Vocal clarity", keseimbangan: "Tonal balance", pilihUntukAnalisa: "Pick a recording to see its analysis.",
     tampilan: "Appearance", warnaTema: "Theme color", mode: "Mode", gelap: "Dark", terang: "Light", ikutiWindows: "Follow Windows", bahasa: "Language",
     modeAudio: "Audio mode", modeAudioKet: "Pick a mode and the recording device, Windows speaker, and volume are set automatically.",
-    rumahKet: "Mixer + converter. YouTube and recordings play through the mixer's Bluetooth.", laptopKet: "No extra gear: the laptop's mic and speakers.",
+    rumahKet: "Mixer + converter. YouTube plays through the mixer's Bluetooth; recordings can play on the laptop speakers.", laptopKet: "No extra gear: the laptop's mic and speakers.",
     rekamDari: "Record from", speakerMode: "Speaker (YouTube & recordings)", aktifkan: "Activate", aktif: "Active",
     tesSuara: "Test sound", keraskanOto: "Auto loudness while recording", keraskanOtoK: "Recordings are raised to a good level, limited so they never clip",
     autoplayK: "The next song starts by itself when one ends",
@@ -83,7 +83,7 @@ export const KAMUS = {
     kunciTersimpan: "Claude key saved", kunciDihapus: "Claude key removed", modeDiaktifkan: "Mode activated",
     converterTidakAda: "Converter not found. Plug in the converter + splitter, then activate again.", ytGagal: "The YouTube player could not load. Check your internet connection.",
     ytTidakBoleh: "This video can't be played in other apps. Moving to the next song.", ytBelumSiap: "The YouTube player isn't ready yet, one moment.",
-    playlistDitambah: "Playlist added", cekUpdate: "Check for updates", updateSekarang: "Update now", versiBaru: "New version available", sudahTerbaru: "You are on the latest version", memperbarui: "Updating the app…", memperbaruiKet: "The app will reopen in a moment. Please keep this window open.", updateGagal: "Update failed", rapikanOto: "Auto polish", berikutnyaKosong: "Play a song and YouTube suggestions for what comes next appear here.", rapikanOtoProses: "Polishing…", dirapikan: "Recording polished", rapikanSiap: "New recording ready. Press Auto polish to clean it up.", playlistAda: "Playlist already added", tesSuaraKet: "Test sound playing on", dikeraskan: "boosted",
+    playlistDitambah: "Playlist added", cekUpdate: "Check for updates", updateSekarang: "Update now", versiBaru: "New version available", sudahTerbaru: "You are on the latest version", memperbarui: "Updating the app…", memperbaruiKet: "The app will reopen in a moment. Please keep this window open.", updateGagal: "Update failed", rapikanOto: "Auto polish", riwayatCari: "Recent searches", speakerYoutube: "YouTube speaker (karaoke)", putarRekamanKe: "Play recordings to", putarRekaman: "Recordings", hapusSemua: "Clear all", berikutnyaKosong: "Play a song and YouTube suggestions for what comes next appear here.", rapikanOtoProses: "Polishing…", dirapikan: "Recording polished", rapikanSiap: "New recording ready. Press Auto polish to clean it up.", playlistAda: "Playlist already added", tesSuaraKet: "Test sound playing on", dikeraskan: "boosted",
   },
 };
 

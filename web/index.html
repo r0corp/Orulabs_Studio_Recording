@@ -22,7 +22,8 @@
     </div>
     <div class="searchrow">
       <button class="lib" id="btnPustaka" data-t-title="playlistSaya"><i class="bi bi-collection-play"></i></button>
-      <form class="search" id="cari"><i class="bi bi-youtube"></i><input id="kata" data-t-ph="cari" autocomplete="off"><button type="submit" data-t="cariBtn">Cari</button></form>
+      <form class="search" id="cari"><i class="bi bi-youtube"></i><input id="kata" data-t-ph="cari" autocomplete="off"><button type="submit" data-t="cariBtn">Cari</button>
+        <div class="riwayat-cari glass" id="riwayatCari" hidden></div></form>
     </div>
     <div class="tools">
       <button class="gear" id="btnPengaturan"><i class="bi bi-gear"></i><span data-t="pengaturan">Pengaturan</span><span class="titik" id="titikStatus"></span></button>
@@ -155,12 +156,14 @@
         <div class="profil" data-profil="rumah">
           <div class="kepala"><i class="bi bi-sliders"></i><div><b data-t="modeRumah"></b><small data-t="rumahKet"></small></div><button class="btn kecil" data-aktifkan="rumah"></button></div>
           <div class="lbl" data-t="rekamDari"></div><label class="select"><i class="bi bi-usb-symbol" style="color:var(--p)"></i><select data-pilih="rumah-input"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="speakerMode"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="rumah-output"></select><i class="bi bi-chevron-down"></i></label>
+          <div class="lbl" data-t="speakerYoutube"></div><label class="select"><i class="bi bi-youtube" style="color:var(--p)"></i><select data-pilih="rumah-output"></select><i class="bi bi-chevron-down"></i></label>
+          <div class="lbl" data-t="putarRekamanKe"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="rumah-putar"></select><i class="bi bi-chevron-down"></i></label>
         </div>
         <div class="profil" data-profil="laptop">
           <div class="kepala"><i class="bi bi-laptop"></i><div><b data-t="modeLaptop"></b><small data-t="laptopKet"></small></div><button class="btn kecil" data-aktifkan="laptop"></button></div>
           <div class="lbl" data-t="rekamDari"></div><label class="select"><i class="bi bi-mic" style="color:var(--p)"></i><select data-pilih="laptop-input"></select><i class="bi bi-chevron-down"></i></label>
-          <div class="lbl" data-t="speakerMode"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="laptop-output"></select><i class="bi bi-chevron-down"></i></label>
+          <div class="lbl" data-t="speakerYoutube"></div><label class="select"><i class="bi bi-youtube" style="color:var(--p)"></i><select data-pilih="laptop-output"></select><i class="bi bi-chevron-down"></i></label>
+          <div class="lbl" data-t="putarRekamanKe"></div><label class="select"><i class="bi bi-speaker" style="color:var(--p)"></i><select data-pilih="laptop-putar"></select><i class="bi bi-chevron-down"></i></label>
         </div>
         <div class="baris"><span><span data-t="keraskanOto"></span><small data-t="keraskanOtoK"></small></span><span class="sw" id="swKeraskan"></span></div>
         <div class="baris"><span><span data-t="autoplay"></span><small data-t="autoplayK"></small></span><span class="sw" id="swAutoplay"></span></div>

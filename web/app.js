@@ -64,7 +64,7 @@ const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
   modeAudio: "rumah", keraskanOto: true, autoplay: true,
-  profil: { rumah: { input: "", output: "" }, laptop: { input: "", output: "" } },
+  profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
 
@@ -123,6 +123,8 @@ function tebakProfil() {
   if (!p.rumah.output) p.rumah.output = rumahOut;
   if (!p.laptop.input) p.laptop.input = laptopIn;
   if (!p.laptop.output) p.laptop.output = laptopOut;
+  if (!p.rumah.putar) p.rumah.putar = laptopOut || p.rumah.output;
+  if (!p.laptop.putar) p.laptop.putar = p.laptop.output;
 }
 
 async function muatAudio() {
@@ -132,8 +134,8 @@ async function muatAudio() {
 
 function isiPengaturanAudio() {
   for (const mode of ["rumah", "laptop"]) {
-    for (const arah of ["input", "output"]) {
-      const sel = $('[data-pilih="' + mode + "-" + arah + '"]'), daftar = AUDIO[arah], kini = P.profil[mode][arah];
+    for (const arah of ["input", "output", "putar"]) {
+      const sel = $('[data-pilih="' + mode + "-" + arah + '"]'), daftar = AUDIO[arah === "putar" ? "output" : arah], kini = P.profil[mode][arah];
       const opsi = daftar.slice(); if (kini && !opsi.includes(kini)) opsi.unshift(kini);
       sel.innerHTML = opsi.map((n) => '<option value="' + esc(n) + '">' + esc(n) + (daftar.includes(n) ? "" : " ✕") + "</option>").join("");
       sel.value = kini;
@@ -173,7 +175,8 @@ $$("#modeAudio button").forEach((b) => (b.onclick = () => aktifkanMode(b.dataset
 function perbaruiRingkas() {
   const prof = P.profil[P.modeAudio];
   $("#ringkasPerangkat").innerHTML = '<i class="bi ' + (P.modeAudio === "rumah" ? "bi-usb-symbol" : "bi-mic") + '" style="color:var(--p)"></i> <b>' + esc(prof.input || "-") + "</b><br>" +
-    '<i class="bi bi-speaker" style="color:var(--p)"></i> ' + esc(t("putarKe")) + " <b>" + esc(prof.output || "-") + '</b> · <a id="lnkUbah">' + esc(t("ubah")) + "</a>";
+    '<i class="bi bi-youtube" style="color:var(--p)"></i> YouTube <b>' + esc(prof.output || "-") + "</b><br>" +
+    '<i class="bi bi-speaker" style="color:var(--p)"></i> ' + esc(t("putarRekaman")) + " <b>" + esc(prof.putar || prof.output || "-") + '</b> · <a id="lnkUbah">' + esc(t("ubah")) + "</a>";
   $("#lnkUbah").onclick = bukaPengaturan;
 }
 
@@ -204,7 +207,8 @@ async function isiPerangkatBrowser() {
   const masuk = semua.filter((d) => d.kind === "audioinput" && d.deviceId !== "communications");
   const keluar = semua.filter((d) => d.kind === "audiooutput" && d.deviceId !== "communications");
   const dIn = masuk.find((d) => d.deviceId !== "default" && cocok(d.label, prof.input)) || masuk.find((d) => d.deviceId === "default") || masuk[0];
-  const dOut = keluar.find((d) => d.deviceId !== "default" && cocok(d.label, prof.output)) || keluar.find((d) => d.deviceId === "default") || keluar[0];
+  const tujuanPutar = prof.putar || prof.output;
+  const dOut = keluar.find((d) => d.deviceId !== "default" && cocok(d.label, tujuanPutar)) || keluar.find((d) => d.deviceId === "default") || keluar[0];
   M.labelInput = dIn ? bersihNama(dIn.label) : ""; M.labelOutput = dOut ? bersihNama(dOut.label) : "";
   M.idOutput = dOut ? dOut.deviceId : "";
   if (dIn && dIn.deviceId !== M.idInput) { M.idInput = dIn.deviceId; await mulaiMonitor(); }
@@ -270,7 +274,7 @@ function setCek(id, ok, teks) {
 function perbaruiSiap() {
   const prof = P.profil[P.modeAudio];
   const inputOk = !!(M.stream && M.stream.active) && (!prof.input || cocok(M.labelInput, prof.input));
-  const outputOk = !!prof.output && AUDIO.output.includes(prof.output);
+  const outputOk = !!prof.output && AUDIO.output.includes(prof.output) && (!prof.putar || AUDIO.output.includes(prof.putar));
   const kini = performance.now(); M.riwayat = M.riwayat.filter((r) => kini - r.t < 3000);
   const maks = M.riwayat.reduce((a, r) => Math.max(a, r.p), 0), dbMaks = 20 * Math.log10(Math.max(maks, 1e-6));
   setCek("#cekInput", inputOk, t("cekInput"));
@@ -679,12 +683,64 @@ function tampilkanKolom() {
 $("#cari").addEventListener("submit", async (e) => {
   e.preventDefault();
   const kata = $("#kata").value.trim(); if (!kata) return;
+  simpanRiwayatCari(kata); tutupRiwayatCari(); $("#kata").blur();
   YT.cari = { kata, item: null }; YT.tampilan = "cari"; tampilkanKolom();
   try { YT.cari.item = await apiJson("cari?" + q({ q: kata })); } catch (err) { YT.cari.item = []; toast(err.message, true); }
   if (YT.tampilan === "cari") tampilkanKolom();
   // Link video ditempel: langsung putar
   if (YT.cari.item.length === 1 && YT.cari.item[0].judul === "Video dari link") { YT.antrian = null; putarVideo(YT.cari.item[0]); }
 });
+
+
+// ================= Riwayat pencarian =================
+// Disimpan di pengaturan (laptop ini), paling baru di atas, maksimal 20.
+const MAKS_RIWAYAT = 20;
+let pilihanRiwayat = -1;
+function simpanRiwayatCari(kata) {
+  if (/^https?:\/\//i.test(kata)) return; // link yang ditempel tidak perlu disimpan
+  const r = (P.riwayatCari || []).filter((x) => x.toLowerCase() !== kata.toLowerCase());
+  r.unshift(kata); P.riwayatCari = r.slice(0, MAKS_RIWAYAT); simpanPengaturan();
+}
+function daftarRiwayatCocok() {
+  const q = $("#kata").value.trim().toLowerCase(), r = P.riwayatCari || [];
+  return q ? r.filter((x) => x.toLowerCase().includes(q) && x.toLowerCase() !== q) : r;
+}
+function tebalkan(teks, q) {
+  if (!q) return esc(teks);
+  const i = teks.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? esc(teks) : esc(teks.slice(0, i)) + "<b>" + esc(teks.slice(i, i + q.length)) + "</b>" + esc(teks.slice(i + q.length));
+}
+function tampilkanRiwayatCari() {
+  const kotak = $("#riwayatCari"), daftar = daftarRiwayatCocok().slice(0, 8), q = $("#kata").value.trim();
+  if (!daftar.length) { tutupRiwayatCari(); return; }
+  pilihanRiwayat = Math.min(pilihanRiwayat, daftar.length - 1);
+  kotak.innerHTML = '<div class="kepala-r"><span>' + esc(t("riwayatCari")) + '</span><button type="button" data-hapus-semua>' + esc(t("hapusSemua")) + "</button></div>" +
+    daftar.map((x, n) => '<div class="r' + (n === pilihanRiwayat ? " aktif" : "") + '" data-kata="' + esc(x) + '"><i class="bi bi-clock-history"></i><span>' + tebalkan(x, q) +
+      '</span><button type="button" class="x" data-hapus="' + esc(x) + '" title="' + esc(t("hapus")) + '"><i class="bi bi-x-lg"></i></button></div>').join("");
+  kotak.hidden = false;
+}
+function tutupRiwayatCari() { $("#riwayatCari").hidden = true; pilihanRiwayat = -1; }
+function cariDariRiwayat(kata) { $("#kata").value = kata; $("#cari").requestSubmit(); }
+
+$("#kata").addEventListener("focus", () => { pilihanRiwayat = -1; tampilkanRiwayatCari(); });
+$("#kata").addEventListener("input", () => { pilihanRiwayat = -1; tampilkanRiwayatCari(); });
+$("#kata").addEventListener("keydown", (e) => {
+  const daftar = daftarRiwayatCocok().slice(0, 8);
+  if ($("#riwayatCari").hidden || !daftar.length) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); pilihanRiwayat = (pilihanRiwayat + 1) % daftar.length; tampilkanRiwayatCari(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); pilihanRiwayat = pilihanRiwayat <= 0 ? daftar.length - 1 : pilihanRiwayat - 1; tampilkanRiwayatCari(); }
+  else if (e.key === "Enter" && pilihanRiwayat >= 0) { e.preventDefault(); cariDariRiwayat(daftar[pilihanRiwayat]); }
+  else if (e.key === "Escape") tutupRiwayatCari();
+});
+// mousedown supaya terpilih sebelum kotak cari kehilangan fokus
+$("#riwayatCari").addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  const hapus = e.target.closest("[data-hapus]"), semua = e.target.closest("[data-hapus-semua]"), baris = e.target.closest("[data-kata]");
+  if (semua) { P.riwayatCari = []; simpanPengaturan(); tutupRiwayatCari(); return; }
+  if (hapus) { P.riwayatCari = (P.riwayatCari || []).filter((x) => x !== hapus.dataset.hapus); simpanPengaturan(); tampilkanRiwayatCari(); return; }
+  if (baris) cariDariRiwayat(baris.dataset.kata);
+});
+$("#kata").addEventListener("blur", () => setTimeout(tutupRiwayatCari, 120));
 
 // Playlist saya (tersimpan di laptop)
 async function muatPustaka() { try { const j = await apiJson("perpustakaan"); YT.pustaka = j.playlist || []; } catch { YT.pustaka = []; } }
@@ -852,7 +908,8 @@ function segarkanTeks() {
 
 // ================= Mulai =================
 (async function mulai() {
-  try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "" }, laptop: { input: "", output: "" }, ...(s.profil || {}) }; } catch {}
+  try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } };
+    for (const m of ["rumah", "laptop"]) Object.assign(P.profil[m], (s.profil || {})[m] || {}); } catch {}
   if (!["rumah", "laptop"].includes(P.modeAudio)) P.modeAudio = "rumah";
   aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa();
   segarkanTeks();

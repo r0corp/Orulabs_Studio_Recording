@@ -22,7 +22,11 @@ dan English.
   - **Studio Rumah**: mixer + converter, suara keluar lewat Bluetooth mixer.
   - **Laptop**: mic dan speaker laptop saja.
   Mode ini mengatur perangkat rekam, speaker bawaan Windows (YouTube ikut pindah), dan volume
-  secara otomatis, dan langsung tersambung lagi setiap aplikasi dibuka.
+  secara otomatis, dan langsung tersambung lagi setiap aplikasi dibuka. Speaker YouTube dan
+  speaker untuk memutar rekaman bisa berbeda, misalnya karaoke lewat speaker mixer tapi hasil
+  rekaman diputar di speaker laptop.
+- **Riwayat pencarian**: pencarian terakhir muncul saat kotak cari diklik, tersaring saat mengetik,
+  bisa dipilih dengan ↑/↓ + Enter, dan bisa dihapus satu-satu atau semuanya.
 - **Rekaman saya**: tersimpan otomatis sebagai WAV, bisa diputar ulang, ganti nama, buka folder,
   atau dihapus ke Recycle Bin.
 - **Gelombang suara**: klik untuk pindah posisi, seret pegangan kuning untuk memotong awal/akhir.
