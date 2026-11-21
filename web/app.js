@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", keraskanOto: true, autoplay: true,
+  modeAudio: "rumah", keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -77,6 +77,7 @@ function terapkanTema() {
   $$("#bahasa button").forEach((b) => b.classList.toggle("on", b.dataset.l === P.bahasa));
   $("#swKeraskan").classList.toggle("off", !P.keraskanOto);
   $("#swAutoplay").classList.toggle("off", !P.autoplay);
+  $("#swSinkron").classList.toggle("off", !P.sinkronYt);
   gambarGelombang();
 }
 mqGelap.addEventListener("change", () => { if (P.mode === "auto") terapkanTema(); });
@@ -84,6 +85,7 @@ $$("#warna button").forEach((b) => (b.onclick = () => { P.warna = b.dataset.w; t
 $$("#tema button").forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; terapkanTema(); simpanPengaturan(); }));
 $$("#bahasa button").forEach((b) => (b.onclick = () => { P.bahasa = b.dataset.l; aturBahasa(P.bahasa); terapkanTema(); segarkanTeks(); simpanPengaturan(); }));
 $("#swKeraskan").onclick = () => { P.keraskanOto = !P.keraskanOto; terapkanTema(); simpanPengaturan(); };
+$("#swSinkron").onclick = () => { P.sinkronYt = !P.sinkronYt; terapkanTema(); simpanPengaturan(); };
 $("#swAutoplay").onclick = () => { P.autoplay = !P.autoplay; terapkanTema(); tampilkanKolom(); simpanPengaturan(); };
 
 // Laci Pengaturan
@@ -296,13 +298,26 @@ async function mulaiRekam() {
   if (Pm.main) hentikanPutar();
   await M.ctx.resume();
   M.potongan = []; M.rek = true; M.node.port.postMessage(true); M.mulai = performance.now();
+  // Rekam bersama YouTube: lagu yang sedang dibuka ikut jalan, judulnya dipakai untuk nama rekaman
+  M.judulLagu = YT.kini ? YT.kini.judul : "";
+  M.bersamaYt = !!(P.sinkronYt && YT.pemutar && YT.kini);
+  if (M.bersamaYt && YT.status !== 1 && YT.status !== 3) { try { YT.pemutar.playVideo(); } catch {} }
   $("#btnRekam").classList.add("on"); $("#btnRekam i").className = "bi bi-stop-fill";
   $("#recPill").classList.remove("diam"); $("#recPill span").textContent = t("rec");
   $("#timerKet").textContent = t("merekamKet");
   aturTombol(); perbaruiSiap();
 }
+/** Nama rekaman: judul lagu yang dinyanyikan (tanpa embel-embel "karaoke") + jam, atau "Rekaman <tanggal jam>". */
+function namaRekamanBaru() {
+  const j = (M.judulLagu || "").replace(/[\[(（【][^\])）】]*(karaoke|lirik|lyrics?|instrumental|official|version|versi|hq|audio|key|nada)[^\])）】]*[\])）】]/gi, "")
+    .replace(/\b(karaoke|lirik|lyrics?|instrumental)\b/gi, "").replace(/[|•·]+.*$/, "").replace(/\s*[-–—]\s*$/, "").replace(/\s{2,}/g, " ").trim();
+  const d = new Date(), jam = String(d.getHours()).padStart(2, "0") + "." + String(d.getMinutes()).padStart(2, "0");
+  return j ? (j.length > 70 ? j.slice(0, 70).trim() : j) + " " + jam : "Rekaman " + cap(d);
+}
 async function selesaiRekam() {
+  if (!M.rek) return;
   M.node.port.postMessage(false); await tunggu(120); M.rek = false;
+  if (M.bersamaYt && YT.pemutar && (YT.status === 1 || YT.status === 3)) { try { YT.pemutar.pauseVideo(); } catch {} }
   $("#btnRekam").classList.remove("on"); $("#btnRekam i").className = "bi bi-mic-fill";
   $("#recPill").classList.add("diam"); $("#recPill span").textContent = t("siap");
   $("#timerKet").textContent = t("tekanRekam");
@@ -315,7 +330,7 @@ async function selesaiRekam() {
   if (total < rate * 0.5) { toast(t("terlaluPendek"), true); return; }
   if (P.keraskanOto) data = dsp.keraskanRekaman(data, rate);
   try {
-    const j = await apiJson("rekaman/simpan?" + q({ nama: "Rekaman " + cap(new Date()) }), { method: "POST", body: dsp.keWav(data, rate) });
+    const j = await apiJson("rekaman/simpan?" + q({ nama: namaRekamanBaru() }), { method: "POST", body: dsp.keWav(data, rate) });
     toast(t("tersimpan") + ": " + j.nama + (P.keraskanOto ? " (" + t("dikeraskan") + ")" : ""));
     await muatDaftar(); tampilkanRekaman(j.nama, data, rate);
     $("#btnRapikan").classList.add("baru"); toast(t("rapikanSiap"));
@@ -517,7 +532,7 @@ function aturTombol() {
 }
 
 // ================= Studio =================
-const KUNCI_FX = ["desis", "penyeimbang", "eq", "desisS", "gema", "keraskan"];
+const KUNCI_FX = ["desis", "penyeimbang", "eq", "desisS", "gema", "kilau", "keraskan"];
 function tampilkanEfek() {
   const e = P.efek;
   for (const k of KUNCI_FX) {
@@ -564,7 +579,8 @@ $("#btnSimpanStudio").onclick = async () => {
 // Setelan efek dipilih otomatis dari hasil analisa rekaman (tanpa internet, tanpa API).
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
-    desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0 };
+    desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0,
+    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40 };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
@@ -844,7 +860,10 @@ function laguBerikutnya() {
   }
   if (YT.terkait && YT.terkait.length) putarVideo(YT.terkait[0]);
 }
-function laguSelesai() { if (P.autoplay) laguBerikutnya(); }
+function laguSelesai() {
+  if (M.rek && M.bersamaYt) { toast(t("laguBerhenti")); selesaiRekam(); return; }
+  if (P.autoplay) laguBerikutnya();
+}
 $("#ytNext").onclick = laguBerikutnya;
 $("#ytPrev").onclick = () => {
   const a = YT.antrian;

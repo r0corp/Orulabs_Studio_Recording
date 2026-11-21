@@ -17,7 +17,9 @@ dan English.
 - **Perekam**: tombol rekam besar, timer, meter level hijau-kuning-merah, cek kesiapan, dan
   volume input Windows langsung dari aplikasi.
 - **Keraskan otomatis saat merekam**: rekaman dinaikkan ke level yang pas dan dibatasi
-  supaya tidak pecah.
+  supaya tidak pecah, tanpa membuat volume naik-turun mengikuti ketukan drum.
+- **Rekam bersama YouTube**: tekan Rekam dan lagu ikut jalan, tekan Stop dan lagu ikut berhenti,
+  lagu selesai maka rekaman ikut selesai. Rekaman otomatis dinamai sesuai judul lagu.
 - **Mode audio, sekali klik**:
   - **Studio Rumah**: mixer + converter, suara keluar lewat Bluetooth mixer.
   - **Laptop**: mic dan speaker laptop saja.
@@ -31,7 +33,8 @@ dan English.
   atau dihapus ke Recycle Bin.
 - **Gelombang suara**: klik untuk pindah posisi, seret pegangan kuning untuk memotong awal/akhir.
 - **Studio**: Bersihkan desis, Penyeimbang suara, EQ vokal, Haluskan huruf "s", Gema ruang,
-  Keraskan akhir, dan Nada lagu. Ada preset Natural, Pop, Ballad, Rock, Dangdut, serta tombol
+  **Kilau vokal** (mengembalikan nada tinggi yang hilang, misalnya pada converter yang terpotong
+  di 8 kHz), Keraskan akhir, dan Nada lagu. Ada preset Natural, Pop, Ballad, Rock, Dangdut, serta tombol
   **Asli / Studio** untuk membandingkan.
 - **Rapikan otomatis**: setelah merekam, tombol **Rapikan otomatis** di atas gelombang menyala.
   Sekali klik, aplikasi membaca hasil analisa lalu memilih dan menyetel efek studio sendiri.
