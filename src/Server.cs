@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.3.7";
+        public const string Versi = "1.3.8";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -186,6 +186,17 @@ namespace OrulabStudio
                     string f = PathMusik(q["nama"]);
                     if (!File.Exists(f)) { Kirim(res, 404, "text/plain", "Tidak ada"); return; }
                     KirimFile(res, f, "audio/wav"); return;
+                }
+
+                case "rekaman/musik-simpan":
+                {
+                    // jalur musik dari impor (WAV), dipasangkan dengan rekaman bernama sama
+                    if (req.HttpMethod != "POST") { Kirim(res, 405, "text/plain", "POST"); return; }
+                    string nama = Bersihkan(q["nama"] ?? "");
+                    if (nama.Length == 0 || !File.Exists(PathRekaman(nama))) { KirimJson(res, 400, "{\"galat\":\"Rekaman tidak ditemukan\"}"); return; }
+                    Directory.CreateDirectory(FolderMusik);
+                    using (var fs = File.Create(Path.Combine(FolderMusik, nama + ".wav"))) req.InputStream.CopyTo(fs);
+                    KirimJson(res, 200, "{\"ok\":true}"); return;
                 }
 
                 case "rekaman/ekspor":

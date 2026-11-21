@@ -65,7 +65,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 100, fokusVokal: 0, mixRekaman: {}, keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", duaJalur: true, mixVokal: 100, mixMusik: 100, fokusVokal: 0, mixRekaman: {}, vokalSaja: {}, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -567,7 +567,8 @@ $("#btnGanti").onclick = async () => {
   if (!R.nama) return;
   const baru = await dialog({ judul: t("gantiNama"), input: R.nama, ok: t("ganti") });
   if (!baru || baru.trim() === R.nama) return;
-  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast(t("namaDiganti")); }
+  try { const j = await apiJson("rekaman/ganti-nama?" + q({ lama: R.nama, baru: baru.trim() }), { method: "POST" }); if (P.vokalSaja && P.vokalSaja[R.nama]) { delete P.vokalSaja[R.nama]; P.vokalSaja[j.nama] = true; simpanPengaturan(); }
+    R.nama = j.nama; $("#namaRekaman").textContent = j.nama; await muatDaftar(); toast(t("namaDiganti")); }
   catch (e) { toast(e.message, true); }
 };
 $("#btnHapus").onclick = async () => {
@@ -793,7 +794,7 @@ function tampilMV() {
   const k = $("#mvKekuatan"); k.value = MV.kekuatan; isiSlider(k); $("#mvKekuatanNilai").textContent = MV.kekuatan + "%";
   $$(".mv-langkah .sw").forEach((s) => s.classList.toggle("off", !MV.langkah[s.dataset.lk]));
   $("#mvKunci").textContent = MV.kunci ? t("mvKunciLagu") + ": " + namaKunci(MV.kunci) : t("mvKunciBaca");
-  $("#mvKunciKet").textContent = MV.pilihKunci === "auto" ? t("mvKunciKet") : t("kDipilih");
+  $("#mvKunciKet").textContent = MV.pilihKunci !== "auto" ? t("kDipilih") : R.musik ? t("mvKunciKet") : t("mvKunciKetVokal");
   const opsi = [{ nilai: "auto", label: t("kOtomatis"), ket: MV.kunciAuto ? namaKunci(MV.kunciAuto) : t("mvKunciBaca"), ikon: "bi-magic" }];
   for (const mayor of [true, false]) for (let tk = 0; tk < 12; tk++) {
     const det = MV.kunciAuto && MV.kunciAuto.tonik === tk && MV.kunciAuto.mayor === mayor;
@@ -808,7 +809,8 @@ function tampilMV() {
 async function siapkanAnalisaMagic() {
   if (MV.untuk === R.nama && MV.kunciAuto) return;
   MV.untuk = R.nama; MV.kunci = null; MV.kunciAuto = null; MV.pilihKunci = "auto"; MV.lacak = null; tampilMV();
-  const k = await magic.deteksiKunci(R.musik, R.rate);
+  // kunci lagu dibaca dari jalur musik; rekaman vokal saja memakai perkiraan dari nada vokal
+  const k = await magic.deteksiKunci(R.musik || R.asli, R.rate);
   if (MV.untuk !== R.nama) return;
   MV.kunciAuto = k; if (MV.pilihKunci === "auto") MV.kunci = k;
   tampilMV();
@@ -816,7 +818,7 @@ async function siapkanAnalisaMagic() {
 $("#btnMagic").onclick = (e) => {
   e.stopPropagation();
   if (!R.asli) { toast(t("pilihDulu"), true); return; }
-  if (!R.musik) { toast(t("magicButuh2"), true); return; }
+  if (!R.musik && !bisaMagicTanpaMusik()) { toast(t(P.imporCampur && P.imporCampur[R.nama] ? "magicCampur" : "magicButuh2"), true); return; }
   const pop = $("#mvPop");
   if (!pop.hidden) { tutupMagic(); return; }
   tutupDropdown(); pop.hidden = false; tampilMV();
@@ -833,7 +835,7 @@ $$("#mvTingkat [data-tk]").forEach((d) => (d.onclick = () => { MV.tingkat = d.da
 $("#mvKekuatan").addEventListener("input", (e) => { MV.kekuatan = +e.target.value; tampilMV(); });
 $$(".mv-langkah .sw").forEach((s) => (s.onclick = () => { MV.langkah[s.dataset.lk] = !MV.langkah[s.dataset.lk]; tampilMV(); }));
 $("#mvProses").onclick = async () => {
-  if (MV.sibuk || !R.asli || !R.musik) return;
+  if (MV.sibuk || !R.asli || (!R.musik && !bisaMagicTanpaMusik())) return;
   MV.sibuk = true; const tombol = $("#mvProses"), teks = tombol.querySelector("span"); tombol.disabled = true;
   const kemajuan = (p) => (teks.textContent = t("mvMemproses").replace("{p}", Math.round(p * 100)));
   try {
@@ -929,6 +931,66 @@ $("#btnWa").onclick = async () => {
     toast(t("waSiap") + " (" + j.nama + ")");
   } catch (e) { toast(e.message, true); }
   finally { b.disabled = false; b.classList.remove("sibuk"); }
+};
+
+/** Rekaman vokal saja (hasil impor) boleh memakai Magic Vocal walau tanpa jalur musik. */
+function bisaMagicTanpaMusik() { return !!(R.nama && P.vokalSaja && P.vokalSaja[R.nama]); }
+
+// ================= Impor rekaman =================
+async function bacaFileAudio(file) {
+  const buf = await file.arrayBuffer();
+  const w = dsp.bacaWav(buf.slice(0));
+  if (w) return w.rate === 48000 ? w : { data: dsp.ubahRate(w.data, w.rate, 48000), rate: 48000 };
+  const ac = new OfflineAudioContext(1, 1, 48000), ab = await ac.decodeAudioData(buf); // ikut diubah ke 48 kHz
+  return { data: dsp.keMono(ab), rate: ab.sampleRate };
+}
+$("#btnImpor").onclick = () => {
+  if (M.rek) return;
+  const latar = document.createElement("div"); latar.className = "modal-latar";
+  const terima = "audio/*,.wav,.mp3,.m4a,.aac,.ogg,.oga,.opus,.flac,.wma";
+  latar.innerHTML = '<div class="modal glass impor"><h3></h3><p></p>' +
+    '<label class="impor-file" id="ifRekam"><i class="bi bi-file-earmark-music"></i><div><b></b><small></small></div><input type="file" hidden accept="' + terima + '"></label>' +
+    '<div class="impor-jenis">' + [["vokal", "jVokal", "jVokalK", true], ["campur", "jCampur", "jCampurK", false], ["pisah", "jPisah", "jPisahK", true]].map(([v, j, k, mg]) =>
+      '<label data-j="' + v + '"><input type="radio" name="jenisImpor" value="' + v + '"><span><b>' + esc(t(j)) + "</b><small>" + esc(t(k)) + '</small></span><span class="tag ' + (mg ? "ya" : "tidak") + '">' + esc(t(mg ? "magicYa" : "magicTidak")) + "</span></label>").join("") + "</div>" +
+    '<label class="impor-file" id="ifMusik" hidden><i class="bi bi-music-note-list"></i><div><b></b><small></small></div><input type="file" hidden accept="' + terima + '"></label>' +
+    '<span class="lbl-nama"></span><input type="text" id="imporNama">' +
+    '<div class="aksi"><button class="btn" data-a="batal"></button><button class="btn primary" data-a="ok"></button></div></div>';
+  const m = latar.querySelector(".modal");
+  m.querySelector("h3").textContent = t("imporJudul"); m.querySelector("p").textContent = t("imporKet");
+  m.querySelector(".lbl-nama").textContent = t("imporNama");
+  m.querySelector('[data-a="batal"]').textContent = t("batal"); m.querySelector('[data-a="ok"]').textContent = t("impor");
+  const kotakFile = (id, judul) => { const el = m.querySelector(id); el.querySelector("b").textContent = t(judul); el.querySelector("small").textContent = t("imporKlik"); return el; };
+  const ifR = kotakFile("#ifRekam", "imporPilih"), ifM = kotakFile("#ifMusik", "imporPilihMusik");
+  let jenis = "campur";
+  const aturJenis = (v) => { jenis = v; m.querySelectorAll(".impor-jenis label").forEach((l) => { l.classList.toggle("on", l.dataset.j === v); l.querySelector("input").checked = l.dataset.j === v; }); ifM.hidden = v !== "pisah"; };
+  m.querySelectorAll(".impor-jenis label").forEach((l) => (l.onclick = () => aturJenis(l.dataset.j)));
+  aturJenis(jenis);
+  for (const el of [ifR, ifM]) el.querySelector("input").onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    el.classList.add("ada"); el.querySelector("b").textContent = f.name; el.querySelector("small").textContent = (f.size / 1e6).toFixed(1) + " MB";
+    if (el === ifR && !m.querySelector("#imporNama").value) m.querySelector("#imporNama").value = f.name.replace(/\.[^.]+$/, "");
+  };
+  const tutup = () => latar.remove();
+  latar.addEventListener("click", (e) => { if (e.target === latar) tutup(); });
+  latar.addEventListener("keydown", (e) => { if (e.key === "Escape") tutup(); });
+  m.querySelector('[data-a="batal"]').onclick = tutup;
+  m.querySelector('[data-a="ok"]').onclick = async () => {
+    const fR = ifR.querySelector("input").files[0], fM = ifM.querySelector("input").files[0];
+    if (!fR) { toast(t("imporButuhFile"), true); return; }
+    if (jenis === "pisah" && !fM) { toast(t("imporButuhMusik"), true); return; }
+    const tombol = m.querySelector('[data-a="ok"]'); tombol.disabled = true; tombol.textContent = t("imporProses");
+    try {
+      const v = await bacaFileAudio(fR);
+      const nama = (m.querySelector("#imporNama").value || fR.name).trim();
+      const j = await apiJson("rekaman/simpan?" + q({ nama }), { method: "POST", body: dsp.keWav(v.data, v.rate) });
+      if (jenis === "pisah") { const mu = await bacaFileAudio(fM); await apiJson("rekaman/musik-simpan?" + q({ nama: j.nama }), { method: "POST", body: dsp.keWav(mu.data, mu.rate) }); }
+      if (jenis === "vokal") { P.vokalSaja = P.vokalSaja || {}; P.vokalSaja[j.nama] = true; }
+      P.imporCampur = P.imporCampur || {}; if (jenis === "campur") P.imporCampur[j.nama] = true; simpanPengaturan();
+      tutup(); await muatDaftar(); toast(t("imporBerhasil") + ": " + j.nama);
+      const el = $('#daftar .item[data-n="' + j.nama.replace(/"/g, '\\"') + '"] b'); if (el) el.click();
+    } catch (e) { toast(t("imporGagal") + ": " + e.message, true); tombol.disabled = false; tombol.textContent = t("impor"); }
+  };
+  document.body.appendChild(latar);
 };
 
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));

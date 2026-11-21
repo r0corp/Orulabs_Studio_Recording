@@ -797,3 +797,20 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn.wa { background: #25d366; border-color: #25d366; color: #fff; }
 .btn.wa:disabled { opacity: .5; }
 .btn.wa.sibuk i { animation: kedip 1s infinite; }
+
+/* ===== Impor rekaman ===== */
+.btn.kecil-impor { width: 28px; height: 28px; border-radius: 8px; font-size: 14px; }
+.modal.impor { width: min(520px, 100%); }
+.impor-file { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; border: 1px dashed rgba(var(--p-rgb), .6); background: rgba(var(--p-rgb), .08); cursor: pointer; margin-bottom: 10px; font-size: 12.5px; }
+.impor-file:hover { background: rgba(var(--p-rgb), .14); }
+.impor-file > i { font-size: 20px; color: var(--p); }
+.impor-file b { display: block; } .impor-file small { color: var(--muted); }
+.impor-file.ada { border-style: solid; }
+.impor-jenis { display: grid; gap: 6px; margin-bottom: 10px; }
+.impor-jenis label { display: flex; align-items: flex-start; gap: 10px; padding: 9px 11px; border-radius: 11px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; font-size: 12.5px; }
+.impor-jenis label.on { border-color: rgba(var(--p-rgb), .8); background: rgba(var(--p-rgb), .14); }
+.impor-jenis input { margin-top: 3px; accent-color: var(--p); }
+.impor-jenis b { display: block; } .impor-jenis small { color: var(--muted); font-size: 11px; }
+.impor-jenis .tag { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; align-self: center; }
+.impor-jenis .tag.ya { color: #34d399; background: rgba(52,211,153,.14); } .impor-jenis .tag.tidak { color: var(--muted); background: var(--surface-2); }
+.modal.impor .lbl-nama { font-size: 12px; color: var(--muted); margin: 4px 0 6px; display: block; }

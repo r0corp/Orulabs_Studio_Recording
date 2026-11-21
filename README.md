@@ -34,7 +34,10 @@ dan English.
 - **Riwayat pencarian**: pencarian terakhir muncul saat kotak cari diklik, tersaring saat mengetik,
   bisa dipilih dengan ↑/↓ + Enter, dan bisa dihapus satu-satu atau semuanya.
 - **Rekaman saya**: tersimpan otomatis sebagai WAV, bisa diputar ulang, ganti nama, buka folder,
-  atau dihapus ke Recycle Bin.
+  atau dihapus ke Recycle Bin. Tombol **+** untuk **impor** rekaman lama dari HP atau aplikasi lain
+  (WAV, MP3, M4A, OGG, FLAC): vokal saja, vokal + musik tercampur, atau vokal + file musik terpisah.
+- **Kirim ke WhatsApp**: yang sedang didengar disimpan sebagai **M4A** (AAC 192 kbps, encoder bawaan
+  Chrome) di folder `Untuk WhatsApp`, siap diseret ke chat.
 - **Gelombang suara**: klik untuk pindah posisi, seret pegangan kuning untuk memotong awal/akhir.
 - **Studio**: Bersihkan desis, Penyeimbang suara, EQ vokal, Haluskan huruf "s", Gema ruang,
   **Kilau vokal** (mengembalikan nada tinggi yang hilang, misalnya pada converter yang terpotong
