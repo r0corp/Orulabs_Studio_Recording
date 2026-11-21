@@ -144,7 +144,7 @@ export function nilaiAnalisa(h) {
 
 // Pita oktaf dan kurva keseimbangan nada mix studio (energi per oktaf relatif terhadap 1 kHz, dB).
 export const PITA = [63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-const KURVA_STUDIO = [3, 3, 1.5, 0.5, 0, -2, -5, -10, -20];
+const KURVA_STUDIO = [3, 2.5, 0.5, -0.5, 0, -1, -4, -9, -19];
 // batas koreksi per pita [potong maks, angkat maks]: bass dalam dan 16 kHz tidak boleh diangkat banyak (isinya dengung/desis)
 const BATAS_EQ = [[-4, 1], [-4, 2], [-4, 3], [-4, 3], [-4, 4], [-4, 4], [-4, 4], [-3, 3], [-3, 1.5]];
 
@@ -184,10 +184,10 @@ export function setelanOtomatis(h, pita) {
   if (kor) {
     const sisaAtas = pita[7] + kor[7] - KURVA_STUDIO[7]; // nada tinggi masih kurang setelah EQ?
     const s = { desisAktif: h.lantaiDerauDb > -62 && h.lantaiDerauDb < -45, desis: 30,
-      penyeimbangAktif: true, penyeimbang: h.rentangDinamikaDb > 22 ? 45 : 30,
-      eqAktif: true, eq: 100, eqCocok: kor,
-      desisSAktif: pita[7] + kor[7] > KURVA_STUDIO[7] + 3, gemaAktif: true, gema: 12, keraskanAktif: true, nada: 0,
-      kilauAktif: sisaAtas < -8, kilau: 25, potongBass: 0 };
+      penyeimbangAktif: true, penyeimbang: h.rentangDinamikaDb > 22 ? 50 : 40,
+      eqAktif: true, eq: 100, eqCocok: kor, vokalMaju: true,
+      desisSAktif: pita[7] + kor[7] > KURVA_STUDIO[7] + 3, gemaAktif: true, gema: 5, keraskanAktif: true, nada: 0,
+      kilauAktif: sisaAtas < -12, kilau: 20, potongBass: 0 };
     const alasan = [], angkat = (b) => kor[b] >= 1.5, kurang = (b) => kor[b] <= -1.5;
     if (angkat(5) || angkat(6)) alasan.push("vokal agak mendem, saya angkat bagian 2–4 kHz supaya lebih jelas");
     if (kurang(2) || kurang(3)) alasan.push("suara agak berdengung/tebal, saya kurangi bagian 250–500 Hz");
@@ -195,6 +195,7 @@ export function setelanOtomatis(h, pita) {
     if (angkat(7)) alasan.push("saya tambah sedikit udara di nada tinggi");
     if (s.kilauAktif) alasan.push("nada tinggi rekaman terpotong, saya beri sedikit kilau");
     if (s.desisAktif) alasan.push("desis di bagian sepi saya bersihkan");
+    alasan.unshift("vokal saya majukan dan musik diseimbangkan seperti mix video klip, gema dibuat sangat tipis");
     s.pesan = "Setelan otomatis: " + (alasan.length ? alasan.join(", ") + "." : "keseimbangan nada sudah pas, saya beri sentuhan studio ringan.");
     return s;
   }
@@ -288,6 +289,11 @@ async function rantaiWebAudio(x, rate, s) {
     const jelas = ctx.createBiquadFilter(); jelas.type = "peaking"; jelas.frequency.value = 2800; jelas.Q.value = 0.7; jelas.gain.value = 4.5 * e; sambung(jelas);
     const udara = ctx.createBiquadFilter(); udara.type = "highshelf"; udara.frequency.value = 10000; udara.gain.value = 2 * e; sambung(udara);
   }
+  if (s.vokalMaju) {
+    const lumpur = ctx.createBiquadFilter(); lumpur.type = "peaking"; lumpur.frequency.value = 320; lumpur.Q.value = 1.1; lumpur.gain.value = -1.5; sambung(lumpur);
+    const badan = ctx.createBiquadFilter(); badan.type = "peaking"; badan.frequency.value = 1200; badan.Q.value = 1.0; badan.gain.value = 1.2; sambung(badan);
+    const tegas = ctx.createBiquadFilter(); tegas.type = "peaking"; tegas.frequency.value = 3000; tegas.Q.value = 1.0; tegas.gain.value = 1.8; sambung(tegas);
+  }
   if (s.kilauAktif && s.kilau > 0) {
     // Kilau vokal (exciter): membangun kembali nada tinggi yang hilang (misalnya converter yang terpotong di 8 kHz)
     const atas = ctx.createBiquadFilter(); atas.type = "highpass"; atas.frequency.value = 2500; atas.Q.value = 0.7;
@@ -312,7 +318,7 @@ async function rantaiWebAudio(x, rate, s) {
   if (s.penyeimbangAktif) {
     const c = s.penyeimbang / 100, k = ctx.createDynamicsCompressor();
     // halus seperti kompresor vokal studio: rasio kecil, knee lebar, serangan cukup lambat supaya huruf tetap hidup
-    k.threshold.value = -10 - 14 * c; k.ratio.value = 1.5 + 2.5 * c; k.knee.value = 12; k.attack.value = 0.02; k.release.value = 0.25;
+    k.threshold.value = -10 - 14 * c; k.ratio.value = 1.5 + 2.5 * c; k.knee.value = 12; k.attack.value = s.vokalMaju ? 0.03 : 0.02; k.release.value = s.vokalMaju ? 0.3 : 0.25;
     sambung(k);
   }
   const keluar = ctx.createGain(); keluar.gain.value = 1;
@@ -445,6 +451,6 @@ export async function prosesStudio(x, rate, s, awal = 0, akhir = 1) {
   if (s.desisAktif && s.desis > 0) y = gerbangDerau(y, rate, s.desis / 100);
   if (s.nada) y = geserNada(y, s.nada);
   y = await rantaiWebAudio(y, rate, s);
-  y = s.keraskanAktif ? keraskan(y, rate, -16, 4) : amankan(y);
+  y = s.keraskanAktif ? keraskan(y, rate, s.vokalMaju ? -14 : -16, 4) : amankan(y);
   return y;
 }

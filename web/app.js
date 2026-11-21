@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -231,6 +231,8 @@ async function mulaiMonitor() {
   }
   if (M.sumber) M.sumber.disconnect();
   M.sumber = M.ctx.createMediaStreamSource(M.stream);
+  if (!M.analis) { M.analis = M.ctx.createAnalyser(); M.analis.fftSize = 2048; M.analis.smoothingTimeConstant = 0.3; }
+  M.sumber.connect(M.analis);
   if (!M.node) {
     M.node = new AudioWorkletNode(M.ctx, "perekam-orulabs");
     M.node.port.onmessage = (e) => {
@@ -247,13 +249,49 @@ async function mulaiMonitor() {
 }
 document.addEventListener("pointerdown", () => { if (M.ctx && M.ctx.state === "suspended") M.ctx.resume(); }, true);
 
-const segmen = [];
-for (let i = 0; i < 30; i++) { const s = document.createElement("i"); $("#meter").appendChild(s); segmen.push(s); }
+// Meter tegak: INPUT (puncak), VOKAL≈ dan MUSIK≈ (perkiraan dari pita frekuensi, karena vokal dan musik tercampur di mixer)
+const SEG = 30, BAR = ["#barIn", "#barVok", "#barMus"].map((id) => {
+  const el = $(id), seg = [];
+  for (let i = 0; i < SEG; i++) { const s = document.createElement("i"); el.insertBefore(s, el.querySelector(".tahan")); seg.push(s); }
+  return { el, seg, tahan: el.querySelector(".tahan"), tampil: -90, puncak: -90, waktuPuncak: 0 };
+});
+const warnaSeg = (i) => (i < 20 ? "#34d399" : i < 26 ? "#fbbf24" : "#ff4d5e");
+let bufFrek = null, bufWaktu = null, clipSampai = 0;
+function isiBar(b, dbv, kini) {
+  b.tampil = Math.max(dbv, b.tampil - 1.2);
+  if (b.tampil >= b.puncak || kini - b.waktuPuncak > 1500) { b.puncak = b.tampil; b.waktuPuncak = kini; }
+  const n = Math.round(Math.max(0, Math.min(1, (b.tampil + 60) / 60)) * SEG);
+  b.seg.forEach((s, i) => (s.style.background = i < n ? warnaSeg(i) : ""));
+  b.tahan.style.bottom = "calc(" + Math.max(0, Math.min(1, (b.puncak + 60) / 60)) * 100 + "% - 2px)";
+}
 (function animasiMeter() {
-  M.tampil = Math.max(M.puncak, M.tampil * 0.86); M.puncak = 0;
-  const dbv = 20 * Math.log10(Math.max(M.tampil, 1e-6)), nyala = Math.round(Math.max(0, Math.min(1, (dbv + 60) / 60)) * 30);
-  segmen.forEach((s, i) => (s.style.background = i < nyala ? (i < 20 ? "#34d399" : i < 26 ? "#fbbf24" : "#ff4d5e") : ""));
-  if (M.rek) $("#timer").textContent = waktu((performance.now() - M.mulai) / 1000);
+  const kini = performance.now();
+  M.tampil = Math.max(M.puncak, M.tampil * 0.86);
+  if (M.puncak >= 0.99) clipSampai = kini + 2000;
+  M.puncak = 0;
+  const dbIn = 20 * Math.log10(Math.max(M.tampil, 1e-6));
+  let dbVok = -90, dbMus = -90;
+  if (M.analis) {
+    const an = M.analis, rate = M.ctx.sampleRate;
+    if (!bufFrek) { bufFrek = new Float32Array(an.frequencyBinCount); bufWaktu = new Float32Array(an.fftSize); }
+    an.getFloatFrequencyData(bufFrek); an.getFloatTimeDomainData(bufWaktu);
+    let rms = 0; for (const v of bufWaktu) rms += v * v; rms = Math.sqrt(rms / bufWaktu.length);
+    let pv = 0, pm = 0, pt = 0; const lebar = rate / an.fftSize;
+    for (let k = 1; k < bufFrek.length; k++) {
+      const f = k * lebar, p = Math.pow(10, bufFrek[k] / 10); if (f < 40 || f > 14000) continue;
+      pt += p; if (f >= 250 && f <= 3500) pv += p; else pm += p;
+    }
+    if (pt > 0 && rms > 0) { const dr = 20 * Math.log10(rms) + 3; dbVok = dr + 10 * Math.log10(Math.max(pv / pt, 1e-6)); dbMus = dr + 10 * Math.log10(Math.max(pm / pt, 1e-6)); }
+  }
+  isiBar(BAR[0], dbIn, kini); isiBar(BAR[1], dbVok, kini); isiBar(BAR[2], dbMus, kini);
+  $("#clipIn").classList.toggle("nyala", kini < clipSampai);
+  if (M.rek) {
+    const lama = (kini - M.mulai) / 1000; $("#timer").textContent = waktu(lama);
+    // cincin tombol: sisa lagu YouTube bila merekam bersama lagu, selain itu berputar tiap menit
+    let f = (lama % 60) / 60;
+    try { if (M.bersamaYt && YT.pemutar && YT.pemutar.getDuration() > 0) f = YT.pemutar.getCurrentTime() / YT.pemutar.getDuration(); } catch {}
+    $("#cincinRekam").style.strokeDashoffset = 289 * (1 - Math.max(0, Math.min(1, f)));
+  } else $("#cincinRekam").style.strokeDashoffset = 289;
   requestAnimationFrame(animasiMeter);
 })();
 
@@ -279,10 +317,11 @@ function perbaruiSiap() {
   const outputOk = !!prof.output && AUDIO.output.includes(prof.output) && (!prof.putar || AUDIO.output.includes(prof.putar));
   const kini = performance.now(); M.riwayat = M.riwayat.filter((r) => kini - r.t < 3000);
   const maks = M.riwayat.reduce((a, r) => Math.max(a, r.p), 0), dbMaks = 20 * Math.log10(Math.max(maks, 1e-6));
-  setCek("#cekInput", inputOk, t("cekInput"));
-  setCek("#cekOutput", outputOk, t("cekSpeaker"));
-  setCek("#cekLevel", dbMaks > -30 && dbMaks < -3, dbMaks >= -3 ? t("terlaluKeras") : dbMaks <= -30 ? t("levelPelan") : t("levelPas"));
-  setCek("#cekYt", YT.status === 1, YT.status === 1 ? t("ytJalan") : t("ytDiam"));
+  setCek("#cekInput", inputOk, t("cekMic")); $("#cekInput").title = M.labelInput || "";
+  setCek("#cekOutput", outputOk, t("cekSpeaker")); $("#cekOutput").title = prof.output || "";
+  setCek("#cekLevel", dbMaks > -30 && dbMaks < -3, t("cekLvl")); $("#cekLevel").title = dbMaks >= -3 ? t("terlaluKeras") : dbMaks <= -30 ? t("levelPelan") : t("levelPas");
+  setCek("#cekYt", YT.status === 1, t("cekYtSingkat")); $("#cekYt").title = YT.status === 1 ? t("ytJalan") : t("ytDiam");
+  $("#cekYt i").className = "bi " + (YT.status === 1 ? "bi-play-circle-fill" : "bi-pause-circle-fill");
   $("#siapTeks").textContent = inputOk ? (M.rek ? t("merekamChip") : t("siapRekam")) : (P.modeAudio === "rumah" ? t("cekConverter") : t("cekMic"));
   $("#siapDot").style.background = inputOk ? (M.rek ? "#ff4d5e" : "") : "#fbbf24";
   // Titik kuning di tombol Pengaturan bila perangkat belum siap (misalnya converter belum dicolok)
@@ -571,6 +610,15 @@ $("#ikonVolPutar").onclick = () => {
 };
 tampilVolPutar();
 
+// Panel Studio/Analisa bisa disembunyikan supaya YouTube lebih lebar
+function aturSamping(tutup) {
+  P.sampingTutup = !!tutup; $(".stage").classList.toggle("samping-tutup", P.sampingTutup);
+  setTimeout(() => gambarGelombang(), 50);
+}
+$("#btnTutupSamping").onclick = () => { aturSamping(true); simpanPengaturan(); };
+$("#btnBukaSamping").onclick = () => { aturSamping(false); simpanPengaturan(); };
+$$("#relSamping [data-buka]").forEach((b) => (b.onclick = () => { aturSamping(false); simpanPengaturan(); const tab = $('.tabs [data-tab="' + b.dataset.buka + '"]'); if (tab) tab.click(); }));
+
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
@@ -651,7 +699,7 @@ $("#btnSimpanStudio").onclick = async () => {
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
     desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0,
-    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0, eqCocok: s.eqCocok || null };
+    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0, eqCocok: s.eqCocok || null, vokalMaju: !!s.vokalMaju };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
@@ -1004,7 +1052,7 @@ function segarkanTeks() {
   try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } };
     for (const m of ["rumah", "laptop"]) Object.assign(P.profil[m], (s.profil || {})[m] || {}); } catch {}
   if (!["rumah", "laptop"].includes(P.modeAudio)) P.modeAudio = "rumah";
-  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar();
+  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar(); aturSamping(P.sampingTutup);
   segarkanTeks();
   await Promise.all([muatDaftar(), muatPustaka(), muatAudio()]);
   tampilkanKolom();

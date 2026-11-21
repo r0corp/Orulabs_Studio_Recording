@@ -55,28 +55,36 @@
     <!-- Perekam -->
     <section class="card glass rec">
       <div class="card-h"><h3><i class="bi bi-record-circle"></i><span data-t="perekam">Perekam</span></h3><span class="rec-pill diam" id="recPill"><i></i><span data-t="siap">SIAP</span></span></div>
-      <div class="ready">
-        <div id="cekInput"><i class="bi bi-check-circle-fill"></i><span></span></div>
-        <div id="cekOutput"><i class="bi bi-check-circle-fill"></i><span></span></div>
-        <div id="cekLevel"><i class="bi bi-check-circle-fill"></i><span></span></div>
-        <div id="cekYt"><i class="bi bi-check-circle-fill"></i><span></span></div>
+      <div class="rec-isi">
+        <div class="vmeter" id="vmeter">
+          <div class="skala"><b style="top:0%">0</b><b style="top:5%">-3</b><b style="top:10%">-6</b><b style="top:20%">-12</b><b style="top:30%">-18</b><b style="top:40%">-24</b><b style="top:60%">-36</b><b style="top:80%">-48</b><b style="top:100%">-60</b></div>
+          <div class="bar" id="barIn"><div class="tahan"></div></div>
+          <div class="bar" id="barVok"><div class="tahan"></div></div>
+          <div class="bar" id="barMus"><div class="tahan"></div></div>
+          <div></div><div class="clip"><span id="clipIn"></span><span></span><span></span></div>
+          <div></div><div class="nama in" data-t="mtrInput"></div><div class="nama" data-t="mtrVokal" data-t-title="mtrPerkiraan"></div><div class="nama" data-t="mtrMusik" data-t-title="mtrPerkiraan"></div>
+        </div>
+        <div class="rec-kanan">
+          <div class="ready">
+            <div id="cekInput"><i class="bi bi-check-circle-fill"></i><span></span></div>
+            <div id="cekOutput"><i class="bi bi-check-circle-fill"></i><span></span></div>
+            <div id="cekLevel"><i class="bi bi-check-circle-fill"></i><span></span></div>
+            <div id="cekYt"><i class="bi bi-check-circle-fill"></i><span></span></div>
+          </div>
+          <div class="timer" id="timer">00:00</div>
+          <div class="muted" id="timerKet" data-t="tekanRekam"></div>
+          <div class="tombol-a">
+            <svg viewBox="0 0 100 100"><circle class="jalur" cx="50" cy="50" r="46"/><circle class="cincin" id="cincinRekam" cx="50" cy="50" r="46"/></svg>
+            <button class="rekam-a" id="btnRekam"><i class="bi bi-mic-fill"></i></button>
+          </div>
+          <button id="btnStop" hidden></button>
+          <div class="field">
+            <div class="row"><span class="label" data-t="volInput">Volume input</span><b style="font-size:12px" id="volNilai">–</b></div>
+            <input type="range" id="volInput" min="0" max="100" value="90">
+          </div>
+          <div class="perangkat" id="ringkasPerangkat"></div>
+        </div>
       </div>
-      <div class="fill"></div>
-      <div class="timer" id="timer">00:00</div>
-      <div class="muted" id="timerKet" data-t="tekanRekam"></div>
-      <div class="transport">
-        <button class="tbtn" id="btnStop"><i class="bi bi-stop-fill"></i></button>
-        <button class="tbtn big" id="btnRekam"><i class="bi bi-mic-fill"></i></button>
-      </div>
-      <div class="label" data-t="levelSuara">Level suara</div>
-      <div class="meter" id="meter"></div>
-      <div class="scale"><span>-60</span><span>-30</span><span>-12</span><span>-3</span><span>0 dB</span></div>
-      <div class="fill"></div>
-      <div class="field">
-        <div class="row"><span class="label" data-t="volInput">Volume input</span><b style="font-size:12px" id="volNilai">–</b></div>
-        <input type="range" id="volInput" min="0" max="100" value="90">
-      </div>
-      <div class="perangkat" id="ringkasPerangkat"></div>
     </section>
 
     <!-- Rekaman -->
@@ -108,11 +116,17 @@
     </section>
 
     <!-- Studio / Analisa -->
+    <section class="card glass rel-samping" id="relSamping">
+      <button id="btnBukaSamping" data-t-title="tampilkanPanel"><i class="bi bi-chevron-double-left"></i></button>
+      <button class="utama" data-buka="studio" data-t-title="studio"><i class="bi bi-magic"></i></button>
+      <button data-buka="analisa" data-t-title="analisa"><i class="bi bi-graph-up"></i></button>
+      <span class="vlabel">STUDIO · ANALISA</span>
+    </section>
     <section class="card glass side">
-      <div class="tabs">
+      <div class="baris-tutup"><div class="tabs">
         <button data-tab="studio" class="on"><i class="bi bi-magic"></i><span data-t="studio">Studio</span></button>
         <button data-tab="analisa"><i class="bi bi-graph-up"></i><span data-t="analisa">Analisa</span></button>
-      </div>
+      </div><button class="tutup-samping" id="btnTutupSamping" data-t-title="sembunyikanPanel"><i class="bi bi-chevron-double-right"></i></button></div>
       <div class="pane on" id="studio">
         <div class="presets" id="preset"><button data-p="natural">Natural</button><button data-p="pop" class="on">Pop</button><button data-p="ballad">Ballad</button><button data-p="rock">Rock</button><button data-p="dangdut">Dangdut</button></div>
         <div class="scroll">
