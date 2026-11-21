@@ -1,6 +1,7 @@
 // Orulabs Studio Recording: logika tampilan.
 // YouTube (pemutar resmi, kolom seperti YouTube asli) + perekam + rekaman + studio + analisa + pengaturan.
 import * as dsp from "./dsp.js";
+import * as magic from "./magic.js";
 import { t, aturBahasa, terapkan } from "./i18n.js";
 
 const $ = (s) => document.querySelector(s);
@@ -481,7 +482,8 @@ async function bukaRekaman(nama) {
 }
 
 function tampilkanRekaman(nama, data, rate) {
-  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0, asliMix: null });
+  Object.assign(R, { nama, asli: data, rate, studio: null, awal: 0, akhir: 1, versi: R.versi + 1, pita: null, gaya: 2, musik: null, geser: 0, asliMix: null, magicAktif: false, vokalMagic: null });
+  $("#mvStatus").hidden = true; $("#kartuNada").hidden = true; tutupMagic();
   tampilMix();
   $("#gayaRapikan").hidden = true;
   $("#namaRekaman").removeAttribute("data-t"); $("#namaRekaman").textContent = nama;
@@ -769,6 +771,125 @@ $("#btnSimpanAtas").onclick = () => {
   $("#btnSimpanStudio").click();
 };
 
+// ================= Magic Vocal =================
+const TINGKAT = { natural: { k: 55, cepat: 0.10, gema: 10 }, pop: { k: 85, cepat: 0.035, gema: 16 }, autotune: { k: 100, cepat: 0, gema: 12 } };
+const MV = { tingkat: "pop", kekuatan: 85, langkah: { nada: true, dinamika: true, rantai: true, master: true }, untuk: null, kunci: null, lacak: null, sibuk: false, ren: null, awalGrafik: 0 };
+function tutupMagic() { $("#mvPop").hidden = true; }
+function tampilMV() {
+  $$("#mvTingkat [data-tk]").forEach((d) => d.classList.toggle("on", d.dataset.tk === MV.tingkat));
+  const k = $("#mvKekuatan"); k.value = MV.kekuatan; isiSlider(k); $("#mvKekuatanNilai").textContent = MV.kekuatan + "%";
+  $$(".mv-langkah .sw").forEach((s) => s.classList.toggle("off", !MV.langkah[s.dataset.lk]));
+  $("#mvKunci").textContent = MV.kunci ? t("mvKunciLagu") + ": " + MV.kunci.nama : t("mvKunciBaca");
+  $("#mvKunciChip").innerHTML = MV.kunci ? '<i class="bi bi-check-circle-fill"></i> ' + esc(t("mvTerdeteksi")) : "";
+}
+async function siapkanAnalisaMagic() {
+  if (MV.untuk === R.nama && MV.kunci) return;
+  MV.untuk = R.nama; MV.kunci = null; MV.lacak = null; tampilMV();
+  MV.kunci = await magic.deteksiKunci(R.musik, R.rate);
+  if (MV.untuk === R.nama) tampilMV();
+}
+$("#btnMagic").onclick = (e) => {
+  e.stopPropagation();
+  if (!R.asli) { toast(t("pilihDulu"), true); return; }
+  if (!R.musik) { toast(t("magicButuh2"), true); return; }
+  const pop = $("#mvPop");
+  if (!pop.hidden) { tutupMagic(); return; }
+  tutupDropdown(); pop.hidden = false; tampilMV();
+  // panel dibuka ke atas tombol (editor ada di bawah layar)
+  const r = $("#btnMagic").getBoundingClientRect(), kiri = Math.max(12, Math.min(r.left + r.width / 2 - 210, innerWidth - 432));
+  pop.style.left = kiri + "px"; pop.style.bottom = (innerHeight - r.top + 10) + "px";
+  $("#mvPanah").style.left = (r.left + r.width / 2 - kiri - 7) + "px";
+  siapkanAnalisaMagic();
+};
+$("#mvPop").addEventListener("click", (e) => e.stopPropagation());
+document.addEventListener("click", () => { if (!MV.sibuk) tutupMagic(); });
+$("#mvTutup").onclick = tutupMagic;
+$$("#mvTingkat [data-tk]").forEach((d) => (d.onclick = () => { MV.tingkat = d.dataset.tk; MV.kekuatan = TINGKAT[MV.tingkat].k; tampilMV(); }));
+$("#mvKekuatan").addEventListener("input", (e) => { MV.kekuatan = +e.target.value; tampilMV(); });
+$$(".mv-langkah .sw").forEach((s) => (s.onclick = () => { MV.langkah[s.dataset.lk] = !MV.langkah[s.dataset.lk]; tampilMV(); }));
+$("#mvProses").onclick = async () => {
+  if (MV.sibuk || !R.asli || !R.musik) return;
+  MV.sibuk = true; const tombol = $("#mvProses"), teks = tombol.querySelector("span"); tombol.disabled = true;
+  const kemajuan = (p) => (teks.textContent = t("mvMemproses").replace("{p}", Math.round(p * 100)));
+  try {
+    kemajuan(0.02); await siapkanAnalisaMagic();
+    if (!MV.lacak) MV.lacak = await magic.lacakNada(R.asli, R.rate, (p) => kemajuan(0.05 + p * 0.55));
+    const tk = TINGKAT[MV.tingkat];
+    let v = R.asli; MV.ren = null;
+    if (MV.langkah.nada) { MV.ren = magic.rencanaKoreksi(MV.lacak, MV.kunci, MV.kekuatan / 100, tk.cepat); v = await magic.terapkanKoreksi(v, R.rate, MV.lacak, MV.ren, (p) => kemajuan(0.6 + p * 0.3)); }
+    else MV.ren = magic.rencanaKoreksi(MV.lacak, MV.kunci, 0, tk.cepat);
+    kemajuan(0.92);
+    if (MV.langkah.dinamika) v = magic.setarakanDinamika(v, R.rate);
+    R.vokalMagic = v; R.magicAktif = true;
+    // rantai efek: rantai vokal studio dan mastering
+    if (!R.pita) R.pita = dsp.profilPita(R.asli, R.rate);
+    const s = dsp.setelanOtomatis(R.analisa, R.pita, 2);
+    if (MV.langkah.rantai) Object.assign(s, { gemaAktif: true, gema: tk.gema, desisSAktif: true, penyeimbangAktif: true, penyeimbang: 55, vokalMaju: true });
+    else Object.assign(s, { eqAktif: false, eqCocok: null, vokalMaju: false, penyeimbangAktif: false, gemaAktif: false, desisAktif: false, desisSAktif: false, kilauAktif: false });
+    s.keraskanAktif = MV.langkah.master;
+    $("#gayaRapikan").hidden = true;
+    terapkanSetelan(s); setLihat("studio");
+    const st = MV.ren.stat;
+    $("#mvStatusJudul").textContent = t("magicVocal") + ": " + $('#mvTingkat [data-tk="' + MV.tingkat + '"] b').textContent;
+    $("#mvStatusKet").textContent = t("mvKet").replace("{n}", st.nadaDikoreksi).replace("{a}", st.falsSebelum).replace("{b}", MV.langkah.nada ? st.falsSesudah : st.falsSebelum).replace("{k}", MV.kunci.nama);
+    $("#mvStatus").hidden = false;
+    tampilGrafikNada(true);
+    tutupMagic(); toast(t("mvSelesai"));
+  } catch (e) { toast(e.message, true); }
+  finally { MV.sibuk = false; tombol.disabled = false; teks.textContent = t("mvProses"); }
+};
+
+/** Grafik nada vokal: nada asli (abu-abu), setelah Magic Vocal (pink), nada-nada di kunci lagu (garis hijau). Jendela 15 detik. */
+function tampilGrafikNada(cariAwal) {
+  const ren = MV.ren, kartu = $("#kartuNada");
+  if (!ren || !R.magicAktif) { kartu.hidden = true; return; }
+  kartu.hidden = false;
+  const n = ren.asli.length, per = Math.round(15 / ren.hop);
+  if (cariAwal) { // mulai dari 15 detik yang paling banyak dirapikan
+    let terbaik = 0, nilai = -1;
+    for (let a = 0; a + per <= n; a += Math.round(per / 3)) { let s = 0; for (let i = a; i < a + per; i++) s += Math.abs(ren.koreksi[i]); if (s > nilai) { nilai = s; terbaik = a; } }
+    MV.awalGrafik = terbaik;
+  }
+  const a0 = MV.awalGrafik, a1 = Math.min(n, a0 + per);
+  $("#nadaWaktu").textContent = waktu(a0 * ren.hop) + " – " + waktu(a1 * ren.hop);
+  const st = ren.stat;
+  $("#stNadaTepat").textContent = st.tepat + "%"; $("#stNadaRapi").textContent = st.nadaDikoreksi;
+  $("#stNadaSisa").textContent = (MV.langkah.nada ? st.falsSesudah : st.falsSebelum) + " sen";
+  $("#lgKunci").textContent = MV.kunci ? MV.kunci.nama : "";
+  const cv = $("#kanvasNada"), dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  // rentang dari nada yang wajar (persentil 5-95), supaya salah baca sesaat (loncat oktaf) tidak melebarkan grafik
+  const ada = []; for (let i = a0; i < a1; i++) if (ren.asli[i]) ada.push(ren.asli[i]);
+  ada.sort((p, q) => p - q);
+  let lo = ada.length ? ada[Math.floor(ada.length * 0.05)] : 55, hi = ada.length ? ada[Math.floor(ada.length * 0.95)] : 67;
+  lo = Math.floor(lo) - 1; hi = Math.max(lo + 7, Math.ceil(hi) + 1);
+  const y = (m) => H - 12 - (m - lo) / (hi - lo) * (H - 24), x = (i) => 30 + (i - a0) / per * (W - 36);
+  const skala = MV.kunci.mayor ? magic.SKALA_MAYOR : magic.SKALA_MINOR;
+  g.font = "600 10px Inter, sans-serif"; g.textAlign = "left";
+  for (let m = lo; m <= hi; m++) {
+    if (!skala.includes(((m - MV.kunci.tonik) % 12 + 12) % 12)) continue;
+    g.strokeStyle = "rgba(52,211,153,.25)"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(28, y(m) + .5); g.lineTo(W, y(m) + .5); g.stroke(); g.setLineDash([]);
+    g.fillStyle = "rgba(148,163,184,.85)"; g.fillText(magic.NADA[((m % 12) + 12) % 12], 2, y(m) + 3);
+  }
+  const garis = (nilai, warna, tebal, alfa) => {
+    g.strokeStyle = warna; g.lineWidth = tebal; g.globalAlpha = alfa; g.beginPath(); let jalan = false;
+    let sebelum = 0;
+    for (let i = a0; i < a1; i++) {
+      const v = nilai(i);
+      // lewati titik di luar rentang dan putus garis bila nada meloncat lebih dari 3 semitone (salah baca)
+      if (!v || v < lo - 0.5 || v > hi + 0.5) { jalan = false; continue; }
+      if (!jalan || Math.abs(v - sebelum) > 3) { g.moveTo(x(i), y(v)); jalan = true; } else g.lineTo(x(i), y(v));
+      sebelum = v;
+    }
+    g.stroke(); g.globalAlpha = 1;
+  };
+  garis((i) => ren.asli[i], "#cbd5e1", 3, 0.7);
+  garis((i) => ren.asli[i] && ren.asli[i] + (MV.langkah.nada ? ren.koreksi[i] : 0), "#ec4899", 2.5, 1);
+}
+$("#nadaKiri").onclick = () => { if (!MV.ren) return; MV.awalGrafik = Math.max(0, MV.awalGrafik - Math.round(15 / MV.ren.hop)); tampilGrafikNada(); };
+$("#nadaKanan").onclick = () => { if (!MV.ren) return; MV.awalGrafik = Math.min(Math.max(0, MV.ren.asli.length - Math.round(15 / MV.ren.hop)), MV.awalGrafik + Math.round(15 / MV.ren.hop)); tampilGrafikNada(); };
+$$('.tabs [data-tab="analisa"]').forEach((b) => b.addEventListener("click", () => setTimeout(() => tampilGrafikNada(), 30)));
+
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
@@ -796,7 +917,7 @@ function aturTombol() {
     const b = el.querySelector(".ic"); if (b) { b.disabled = M.rek; b.title = t(main ? "jeda" : "putar"); }
   });
   $("#btnStop").disabled = !M.rek && !Pm.main;
-  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan"].forEach((s) => ($(s).disabled = !ada || M.rek));
+  ["#btnGanti", "#btnHapus", "#btnDengar", "#btnSimpanStudio", "#btnSimpanAtas", "#btnRapikan", "#btnMagic"].forEach((s) => ($(s).disabled = !ada || M.rek));
   $$("#modeAudio button, #pilihModeAudio button").forEach((b) => (b.disabled = M.rek));
 }
 
@@ -829,7 +950,7 @@ const prosesUlang = tundaan(async () => {
   R.studio = null; if (R.lihat === "studio") { if (Pm.main) hentikanPutar(); gambarGelombang(); }
   $("#btnDengar span").textContent = t("memproses");
   try {
-    let hasil = await dsp.prosesStudio(R.asli, R.rate, { ...P.efek, fokus: R.musik ? 0 : P.fokusVokal }, R.awal, R.akhir);
+    let hasil = await dsp.prosesStudio(R.magicAktif && R.vokalMagic ? R.vokalMagic : R.asli, R.rate, { ...P.efek, fokus: R.musik ? 0 : P.fokusVokal }, R.awal, R.akhir);
     if (R.musik && R.mixAuto) {
       // Seimbang otomatis: musik ±5 dB di bawah vokal (diukur pada bagian yang berbunyi)
       const mulai = Math.floor(R.awal * R.asli.length), akhir = Math.ceil(R.akhir * R.asli.length);
@@ -862,6 +983,7 @@ function terapkanSetelan(s) {
 }
 $("#btnRapikan").onclick = async () => {
   if (!R.asli || !R.analisa || R.analisa.pendek) { toast(t("pilihDulu"), true); return; }
+  R.magicAktif = false; $("#mvStatus").hidden = true;
   const b = $("#btnRapikan"); b.classList.remove("baru"); b.disabled = true; $("#btnRapikan span").textContent = t("rapikanOtoProses");
   R.pita = dsp.profilPita(R.asli, R.rate);
   const s = dsp.setelanOtomatis(R.analisa, R.pita, R.gaya || 2);

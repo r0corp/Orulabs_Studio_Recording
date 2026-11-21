@@ -700,3 +700,64 @@ canvas { display: block; width: 100%; height: 100%; }
 .ringkas-level.ok i { color: #34d399; }
 .ringkas-level.pelan i { color: var(--warn); }
 .ringkas-level.bahaya i { color: #ff4d5e; }
+
+/* ===== v1.3: kepala editor baru ===== */
+.editor { container-type: inline-size; }
+.editor > .card-h h3 { gap: 10px; }
+.btn.ikon-saja { width: 36px; padding: 0; justify-content: center; }
+.baris-mix .vol-putar { margin: 0; gap: 7px; flex: 1; min-width: 0; cursor: default; display: inline-flex; align-items: center; color: var(--text); font-size: 12px; }
+.baris-mix .vol-putar input { flex: 1; width: auto; min-width: 50px; }
+.baris-mix .vol-putar b { min-width: 40px; }
+.baris-mix .pemisah { flex: none; width: 1px; align-self: stretch; background: var(--border); }
+.baris-mix > .mix-dua, .baris-mix > .mix-satu { flex: 3; }
+.baris-mix > .vol-putar { flex: 1.1; }
+@container (max-width: 860px) {
+  .baris-mix span[data-t], .baris-mix .sinkron span[data-t] { display: none; }
+  .btn.rapikan span, .btn.magic span { display: none; }
+  .btn.rapikan, .btn.magic { width: 36px; padding: 0; justify-content: center; }
+  .mv-status em { display: none; }
+}
+/* ===== Magic Vocal ===== */
+.btn.magic { background: linear-gradient(135deg, #f59e0b, #ec4899 55%, #8b5cf6); border: 0; color: #fff; box-shadow: 0 6px 18px rgba(236,72,153,.35); }
+.btn.magic:disabled { opacity: .45; box-shadow: none; }
+.mv-pop { position: fixed; z-index: 45; width: 420px; padding: 14px; border-radius: 16px; background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)), var(--solid);
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 22px 50px rgba(0,0,0,.55); font-size: 12.5px; animation: dd-muncul .16s ease-out; }
+[data-ol-skin="glass-light"] .mv-pop { border-color: rgba(15,23,42,.12); box-shadow: 0 22px 50px rgba(15,23,42,.2); }
+.mv-pop h4 { margin: 0 0 2px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.mv-pop h4 .bi-stars { color: #f59e0b; }
+.mv-tutup { margin-left: auto; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.mv-pop .sub { color: var(--muted); font-size: 11.5px; margin-bottom: 10px; }
+.mv-kunci { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); margin-bottom: 10px; }
+.mv-kunci > i { color: var(--p); } .mv-kunci b { font-size: 13px; display: block; } .mv-kunci small { color: var(--muted); }
+.mv-kunci .chip2 { margin-left: auto; font-size: 11px; color: #34d399; font-weight: 600; white-space: nowrap; }
+.mv-tingkat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.mv-tingkat div { padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; }
+.mv-tingkat div b { display: block; font-size: 12.5px; margin: 4px 0 2px; } .mv-tingkat div span { font-size: 10.5px; color: var(--muted); line-height: 1.35; display: block; }
+.mv-tingkat div i { font-size: 16px; color: var(--p); }
+.mv-tingkat div.on { border-color: rgba(236,72,153,.8); background: rgba(236,72,153,.14); box-shadow: 0 0 0 3px rgba(236,72,153,.15); }
+.mv-kuat { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; } .mv-kuat > span { white-space: nowrap; font-weight: 600; } .mv-kuat input { flex: 1; } .mv-kuat b { width: 40px; text-align: right; }
+.mv-langkah { border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; margin-bottom: 10px; }
+.mv-langkah > div { display: flex; align-items: center; gap: 9px; min-height: 36px; } .mv-langkah > div + div { border-top: 1px solid var(--border); }
+.mv-langkah > div > i { color: var(--p); width: 16px; text-align: center; } .mv-langkah > div > span:not(.sw) { flex: 1; } .mv-langkah small { display: block; color: var(--muted); font-size: 10.5px; }
+.mv-langkah .sw { flex: none; transform: scale(.85); cursor: pointer; }
+.mv-go { width: 100%; height: 40px; border: 0; border-radius: 11px; color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  background: linear-gradient(135deg, #f59e0b, #ec4899 55%, #8b5cf6); }
+.mv-go:disabled { opacity: .7; cursor: progress; }
+.mv-panah { position: absolute; bottom: -7px; width: 14px; height: 14px; background: var(--solid); border-right: 1px solid rgba(255,255,255,.14); border-bottom: 1px solid rgba(255,255,255,.14); transform: rotate(45deg); }
+.mv-status { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; min-width: 0; }
+.mv-status .pill-ok { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  background: rgba(236,72,153,.16); border: 1px solid rgba(236,72,153,.6); }
+.mv-status .pill-ok i { color: #f59e0b; }
+.mv-status em { font-style: normal; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* grafik nada */
+#analisa { overflow: auto; }
+.nada-kartu { flex: none; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 10px; }
+.nada-kartu h5 { margin: 0 0 6px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; } .nada-kartu h5 > i { color: var(--p); }
+.nada-kartu .nav { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 11px; color: var(--muted); }
+.nada-kartu .nav button { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; padding: 0; font-size: 11px; }
+.nada-kartu canvas { width: 100%; height: 210px; display: block; }
+.nada-leg { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+.nada-leg i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.nada-leg i.a { background: #cbd5e1; } .nada-leg i.m { background: #ec4899; } .nada-leg i.k { background: rgba(52,211,153,.7); }
+.nada-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.nada-stat div { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); } .nada-stat b { display: block; font-size: 16px; } .nada-stat small { color: var(--muted); font-size: 10.5px; }

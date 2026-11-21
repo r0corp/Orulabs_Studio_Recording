@@ -40,9 +40,13 @@ dan English.
   **Kilau vokal** (mengembalikan nada tinggi yang hilang, misalnya pada converter yang terpotong
   di 8 kHz), Keraskan akhir, dan Nada lagu. Ada preset Natural, Pop, Ballad, Rock, Dangdut, serta tombol
   **Asli / Studio** untuk membandingkan.
-- **Rapikan otomatis**: setelah merekam, tombol **Rapikan otomatis** di atas gelombang menyala.
-  Sekali klik, aplikasi membaca hasil analisa lalu memilih dan menyetel efek studio sendiri.
-  Semuanya dikerjakan di laptop, tanpa internet dan tanpa API.
+- **Mix Studio**: sekali klik, aplikasi membaca hasil analisa lalu menyeimbangkan EQ, volume, dan
+  efek studio sendiri, dengan 3 pilihan hasil (Natural, Video klip, Hangat).
+- **✨ Magic Vocal** (rekaman 2 jalur): kunci lagu dibaca otomatis dari jalur musik, nada vokal yang
+  fals dirapikan ke nada yang benar (koreksi nada / pitch correction), dinamika vokal disetarakan,
+  lalu rantai vokal studio dan mastering. Tiga tingkat: Natural, Pop, dan Efek Autotune. Hasilnya
+  terlihat di **Grafik nada vokal** pada tab Analisa.
+- Semua pengolahan dikerjakan di laptop, tanpa internet dan tanpa API.
 - **Analisa**: pecah atau tidak, bagian senyap, bass, kejelasan vokal, grafik nada, dan saran setelan mixer.
 - **Pengaturan**: mode audio dan status perangkat, tes suara, keraskan otomatis, putar otomatis,
   5 warna tema (Biru, Ungu, Tosca, Senja, Mawar), mode Gelap/Terang/Ikuti Windows, bahasa, folder

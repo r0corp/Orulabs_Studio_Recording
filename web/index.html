@@ -100,17 +100,19 @@
       <div class="sep"></div>
       <div class="editor">
         <div class="card-h">
-          <h3><button class="putar-kecil" id="btnPutar" data-tip-t="tipPutar"><i class="bi bi-play-fill"></i></button><span class="vol-putar" data-t-title="volPutar"><i class="bi bi-volume-up" id="ikonVolPutar"></i><input type="range" id="volPutar" min="0" max="200" step="5" value="100"><b id="volPutarNilai">100%</b></span><span id="namaRekaman" data-t="belumDipilih"></span></h3>
+          <h3><button class="putar-kecil" id="btnPutar" data-tip-t="tipPutar"><i class="bi bi-play-fill"></i></button><div class="ab" id="ab"><button data-v="asli" class="on" data-t="asli" data-tip-t="tipAsli">Asli</button><button data-v="studio" data-t="studio" data-tip-t="tipStudio">Studio</button></div><span id="namaRekaman" data-t="belumDipilih"></span></h3>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn rapikan" id="btnRapikan" data-tip-t="tipRapikan"><i class="bi bi-stars"></i><span data-t="rapikanOto"></span></button>
-            <div class="ab" id="ab"><button data-v="asli" class="on" data-t="asli" data-tip-t="tipAsli">Asli</button><button data-v="studio" data-t="studio" data-tip-t="tipStudio">Studio</button></div>
-            <button class="btn primary" id="btnSimpanAtas" data-tip-t="tipSimpan"><i class="bi bi-download"></i><span data-t="simpan"></span></button>
+            <button class="btn rapikan" id="btnRapikan" data-tip-t="tipRapikan"><i class="bi bi-sliders"></i><span data-t="rapikanOto"></span></button>
+            <button class="btn magic" id="btnMagic" data-tip-t="tipMagic"><i class="bi bi-stars"></i><span data-t="magicVocal"></span></button>
+            <button class="btn primary ikon-saja" id="btnSimpanAtas" data-tip-t="simpan"><i class="bi bi-download"></i></button>
             <button class="btn" id="btnGanti" data-tip-t="tipGanti"><i class="bi bi-pencil"></i></button>
             <button class="btn" id="btnFolder" data-tip-t="tipFolder"><i class="bi bi-folder2-open"></i></button>
             <button class="btn" id="btnHapus" data-tip-t="tipHapus"><i class="bi bi-trash3"></i></button>
           </div>
         </div>
         <div class="baris-mix" id="barisMix" hidden>
+          <label class="vol-putar" data-tip-t="volPutar"><i class="bi bi-volume-up" id="ikonVolPutar"></i><span data-t="volume"></span><input type="range" id="volPutar" min="0" max="200" step="5" value="100"><b id="volPutarNilai">100%</b></label>
+          <div class="pemisah"></div>
           <div class="mix-dua" id="mixDua">
             <label data-tip-t="tipMixVokal"><i class="bi bi-mic-fill"></i><span data-t="vokal"></span><input type="range" id="mixVokal" min="0" max="150" step="5" value="100"><b id="mixVokalNilai">100%</b></label>
             <label data-tip-t="tipMixMusik"><i class="bi bi-music-note-beamed"></i><span data-t="musik"></span><input type="range" id="mixMusik" min="0" max="150" step="5" value="70"><b id="mixMusikNilai">70%</b></label>
@@ -122,6 +124,7 @@
             <em data-t="satuJalurKet"></em>
           </div>
         </div>
+        <div class="mv-status" id="mvStatus" hidden><span class="pill-ok"><i class="bi bi-stars"></i><b id="mvStatusJudul"></b></span><em id="mvStatusKet"></em></div>
         <div class="gaya-rapikan" id="gayaRapikan" hidden>
           <span data-t="pilihHasil"></span>
           <button data-g="1"><b>1</b><span data-t="gaya1"></span></button>
@@ -170,6 +173,12 @@
         </div>
       </div>
       <div class="pane" id="analisa">
+        <div class="nada-kartu" id="kartuNada" hidden>
+          <h5><i class="bi bi-graph-up"></i><span data-t="grafikNada"></span><span class="nav"><button id="nadaKiri"><i class="bi bi-chevron-left"></i></button><b id="nadaWaktu"></b><button id="nadaKanan"><i class="bi bi-chevron-right"></i></button></span></h5>
+          <canvas id="kanvasNada"></canvas>
+          <div class="nada-leg"><span><i class="a"></i><span data-t="lgAsli"></span></span><span><i class="m"></i><span data-t="lgMagic"></span></span><span><i class="k"></i><span id="lgKunci"></span></span></div>
+          <div class="nada-stat"><div><b id="stNadaTepat">–</b><small data-t="stTepat"></small></div><div><b id="stNadaRapi">–</b><small data-t="stDikoreksi"></small></div><div><b id="stNadaSisa">–</b><small data-t="stSisa"></small></div></div>
+        </div>
         <div class="stats">
           <div class="stat"><span class="label" data-t="pecah"></span><b id="stPecah">–</b><em id="stPecahKet"></em></div>
           <div class="stat"><span class="label" data-t="senyap"></span><b id="stSenyap">–</b><em id="stSenyapKet"></em></div>
@@ -242,6 +251,25 @@
       </div>
     </div>
   </div>
+</div>
+<div class="mv-pop" id="mvPop" hidden>
+  <h4><i class="bi bi-stars"></i><span data-t="magicVocal"></span><button class="mv-tutup" id="mvTutup"><i class="bi bi-x-lg"></i></button></h4>
+  <div class="sub" data-t="mvSub"></div>
+  <div class="mv-kunci"><i class="bi bi-music-note-beamed"></i><div><b id="mvKunci"></b><small data-t="mvKunciKet"></small></div><span class="chip2" id="mvKunciChip"></span></div>
+  <div class="mv-tingkat" id="mvTingkat">
+    <div data-tk="natural"><i class="bi bi-feather"></i><b data-t="mvNatural"></b><span data-t="mvNaturalK"></span></div>
+    <div data-tk="pop"><i class="bi bi-gem"></i><b data-t="mvPop"></b><span data-t="mvPopK"></span></div>
+    <div data-tk="autotune"><i class="bi bi-robot"></i><b data-t="mvAuto"></b><span data-t="mvAutoK"></span></div>
+  </div>
+  <div class="mv-kuat"><span data-t="mvKekuatan"></span><input type="range" id="mvKekuatan" min="0" max="100" step="5" value="85"><b id="mvKekuatanNilai">85%</b></div>
+  <div class="mv-langkah">
+    <div><i class="bi bi-music-note"></i><span><span data-t="mvL1"></span><small data-t="mvL1K"></small></span><span class="sw" data-lk="nada"></span></div>
+    <div><i class="bi bi-activity"></i><span><span data-t="mvL2"></span><small data-t="mvL2K"></small></span><span class="sw" data-lk="dinamika"></span></div>
+    <div><i class="bi bi-mic"></i><span><span data-t="mvL3"></span><small data-t="mvL3K"></small></span><span class="sw" data-lk="rantai"></span></div>
+    <div><i class="bi bi-vinyl"></i><span><span data-t="mvL4"></span><small data-t="mvL4K"></small></span><span class="sw" data-lk="master"></span></div>
+  </div>
+  <button class="mv-go" id="mvProses"><i class="bi bi-magic"></i><span data-t="mvProses"></span></button>
+  <i class="mv-panah" id="mvPanah"></i>
 </div>
 <script type="module" src="app.js"></script>
 </body>
