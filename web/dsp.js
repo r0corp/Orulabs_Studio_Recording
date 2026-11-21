@@ -109,6 +109,19 @@ export function analisa(x, rate) {
   return h;
 }
 
+/** Cari batas potong otomatis (0..1): lewati bagian senyap di awal dan akhir, sisakan jeda 0,5 detik. */
+export function batasSenyap(x, rate) {
+  const lv = [];
+  for (let w = 0; w + rate <= x.length; w += rate) { let t = 0; for (let i = w; i < w + rate; i++) t += x[i] * x[i]; lv.push(db(Math.sqrt(t / rate))); }
+  if (lv.length < 8) return { awal: 0, akhir: 1 };
+  const urut = lv.slice().sort((a, b) => a - b), tipikal = urut[Math.floor(urut.length * 0.6)], ambang = tipikal - 10;
+  let a = lv.findIndex((v) => v > ambang), b = lv.length - 1 - lv.slice().reverse().findIndex((v) => v > ambang);
+  if (a < 0) return { awal: 0, akhir: 1 };
+  const n = x.length / rate, awalDetik = Math.max(0, a - 0.5), akhirDetik = Math.min(n, b + 1.5);
+  // hanya potong bila bagian senyapnya berarti (lebih dari 2 detik total)
+  return awalDetik + (n - akhirDetik) < 2 ? { awal: 0, akhir: 1 } : { awal: awalDetik / n, akhir: akhirDetik / n };
+}
+
 /** Ringkasan analisa + saran setelan mixer dalam bahasa sehari-hari. */
 export function nilaiAnalisa(h) {
   const r = { kartu: {}, saran: [] };
@@ -134,9 +147,10 @@ export function setelanOtomatis(h) {
   // Desis hanya terdengar di bagian sepi: lantai derau -62..-40 dB. Di atas itu musiknya tidak pernah sepi.
   const s = { desisAktif: h.lantaiDerauDb > -62 && h.lantaiDerauDb < -40, desis: h.lantaiDerauDb > -50 ? 60 : 40,
     penyeimbangAktif: true, penyeimbang: h.rentangDinamikaDb > 22 ? 60 : 35,
-    eqAktif: true, eq: h.kejelasan < 6 ? 90 : (h.bass > 45 || h.kejelasan < 15) ? 70 : 45,
+    eqAktif: true, eq: h.kejelasan < 6 ? 90 : h.kejelasan < 15 ? 70 : h.kejelasan > 22 ? 25 : h.bass > 45 ? 50 : 40,
     desisSAktif: h.udara > 6, gemaAktif: true, gema: h.kejelasan < 6 ? 14 : 20, keraskanAktif: true, nada: 0,
-    kilauAktif: h.udara < 1.5, kilau: h.udara < 0.5 ? 70 : 45 };
+    kilauAktif: h.udara < 1.5, kilau: h.kejelasan > 22 ? 30 : h.udara < 0.5 ? 70 : 45,
+    potongBass: h.bass > 55 ? 60 : h.bass > 45 ? 40 : h.bass > 38 ? 20 : 0 };
   const alasan = [];
   if (s.desisAktif) alasan.push("ada desis latar, jadi saya bersihkan");
   if (s.kilauAktif) alasan.push("nada tinggi rekaman terpotong, saya tambahkan kilau vokal");
@@ -212,6 +226,11 @@ async function rantaiWebAudio(x, rate, s) {
     simpul.connect(jumlah);
     simpul.connect(atas); atas.connect(dorong); dorong.connect(jenuh); jenuh.connect(kilap); kilap.connect(kilap2); kilap2.connect(campur); campur.connect(jumlah);
     simpul = jumlah;
+  }
+  if (s.potongBass > 0) {
+    const pb = s.potongBass / 100;
+    const lumpur = ctx.createBiquadFilter(); lumpur.type = "peaking"; lumpur.frequency.value = 180; lumpur.Q.value = 0.8; lumpur.gain.value = -7 * pb; sambung(lumpur);
+    const dentum = ctx.createBiquadFilter(); dentum.type = "lowshelf"; dentum.frequency.value = 110; dentum.gain.value = -4 * pb; sambung(dentum);
   }
   if (s.desisSAktif) { const ds = ctx.createBiquadFilter(); ds.type = "peaking"; ds.frequency.value = 6500; ds.Q.value = 2; ds.gain.value = -6; sambung(ds); }
   if (s.penyeimbangAktif) {

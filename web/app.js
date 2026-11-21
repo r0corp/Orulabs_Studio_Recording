@@ -544,7 +544,7 @@ function tampilkanEfek() {
   $("#nadaNilai").textContent = (e.nada > 0 ? "+" : "") + (e.nada || 0);
   $$("#preset button").forEach((b) => b.classList.toggle("on", b.dataset.p === P.preset));
 }
-function efekBerubah() { P.preset = ""; $$("#preset button").forEach((b) => b.classList.remove("on")); simpanPengaturan(); prosesUlang(); }
+function efekBerubah() { P.efek.potongBass = 0; P.preset = ""; $$("#preset button").forEach((b) => b.classList.remove("on")); simpanPengaturan(); prosesUlang(); }
 for (const k of KUNCI_FX) {
   const el = $('.fx[data-fx="' + k + '"]');
   el.querySelector(".sw").onclick = () => { P.efek[k + "Aktif"] = !P.efek[k + "Aktif"]; tampilkanEfek(); efekBerubah(); };
@@ -580,13 +580,16 @@ $("#btnSimpanStudio").onclick = async () => {
 function terapkanSetelan(s) {
   P.efek = { desisAktif: s.desisAktif, desis: s.desis, penyeimbangAktif: s.penyeimbangAktif, penyeimbang: s.penyeimbang, eqAktif: s.eqAktif, eq: s.eq,
     desisSAktif: s.desisSAktif, gemaAktif: s.gemaAktif, gema: s.gema, keraskanAktif: s.keraskanAktif, nada: s.nada || 0,
-    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40 };
+    kilauAktif: !!s.kilauAktif, kilau: s.kilau ?? 40, potongBass: s.potongBass || 0 };
   P.preset = ""; tampilkanEfek(); simpanPengaturan(); prosesUlang();
 }
 $("#btnRapikan").onclick = async () => {
   if (!R.asli || !R.analisa || R.analisa.pendek) { toast(t("pilihDulu"), true); return; }
   const b = $("#btnRapikan"); b.classList.remove("baru"); b.disabled = true; $("#btnRapikan span").textContent = t("rapikanOtoProses");
   const s = dsp.setelanOtomatis(R.analisa);
+  // potong otomatis bagian senyap di awal/akhir (intro sepi, iklan, video yang masih memuat)
+  const bs = dsp.batasSenyap(R.asli, R.rate);
+  if (bs.awal > 0 || bs.akhir < 1) { R.awal = bs.awal; R.akhir = bs.akhir; s.pesan += " " + t("dipotongSenyap"); }
   terapkanSetelan(s); setLihat("studio");
   // tunggu hasil studio selesai diproses
   for (let i = 0; i < 100 && !R.studio; i++) await tunggu(100);
