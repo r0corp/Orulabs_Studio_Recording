@@ -63,7 +63,7 @@ function dialog({ judul, teks = "", input = null, ok = "OK", bahaya = false }) {
 const EFEK_AWAL = { ...dsp.PRESET.pop, nada: 0 };
 const P = {
   warna: "biru", mode: "glass-dark", bahasa: "id", preset: "pop", efek: { ...EFEK_AWAL },
-  modeAudio: "rumah", volPutar: 100, sampingTutup: false, keraskanOto: true, autoplay: true, sinkronYt: true,
+  modeAudio: "rumah", volPutar: 100, sampingTutup: false, modeKerja: "rekam", keraskanOto: true, autoplay: true, sinkronYt: true,
   profil: { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } },
 };
 const simpanPengaturan = tundaan(() => api("pengaturan", { method: "POST", body: JSON.stringify(P) }).catch(() => {}), 500);
@@ -619,6 +619,17 @@ $("#btnTutupSamping").onclick = () => { aturSamping(true); simpanPengaturan(); }
 $("#btnBukaSamping").onclick = () => { aturSamping(false); simpanPengaturan(); };
 $$("#relSamping [data-buka]").forEach((b) => (b.onclick = () => { aturSamping(false); simpanPengaturan(); const tab = $('.tabs [data-tab="' + b.dataset.buka + '"]'); if (tab) tab.click(); }));
 
+// Pilihan kerja di bilah atas
+function tampilModeKerja() { $$("#modeKerja button").forEach((b) => b.classList.toggle("on", b.dataset.m === P.modeKerja)); }
+$$("#modeKerja button").forEach((b) => (b.onclick = () => {
+  if (P.modeKerja === b.dataset.m) return;
+  P.modeKerja = b.dataset.m; tampilModeKerja(); simpanPengaturan();
+  toast(t(P.modeKerja === "youtube" ? "modeYtAktif" : "modeRekamAktif"));
+  // pindah ke YouTube dengan lagu yang sedang disiapkan: langsung putar
+  if (P.modeKerja === "youtube" && YT.pemutar && YT.status !== 1 && YT.status !== 3 && YT.kini && !M.rek) { try { YT.pemutar.playVideo(); } catch {} }
+}));
+tampilModeKerja();
+
 $("#btnSetelanSuara").onclick = () => api("setelan-suara", { method: "POST" }).catch((e) => toast(e.message, true));
 
 // Tes suara: dua nada singkat ke speaker mode aktif
@@ -936,6 +947,7 @@ function mulaiAntrian(a, i, langsung = false) {
  */
 async function putarVideo(v, langsung = false) {
   if (!v) return;
+  if (P.modeKerja === "youtube" && !M.rek) langsung = true;
   if (!YT.siap) { toast(t("ytBelumSiap"), true); return; }
   if (YT.kini && YT.kini.id !== v.id) YT.sejarah.push(YT.kini);
   YT.kini = { ...v }; YT.terkait = null;
@@ -1057,7 +1069,7 @@ function segarkanTeks() {
   try { const s = await apiJson("pengaturan"); Object.assign(P, s); P.efek = { ...EFEK_AWAL, ...(s.efek || {}) }; P.profil = { rumah: { input: "", output: "", putar: "" }, laptop: { input: "", output: "", putar: "" } };
     for (const m of ["rumah", "laptop"]) Object.assign(P.profil[m], (s.profil || {})[m] || {}); } catch {}
   if (!["rumah", "laptop"].includes(P.modeAudio)) P.modeAudio = "rumah";
-  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar(); aturSamping(P.sampingTutup);
+  aturBahasa(P.bahasa); terapkanTema(); tampilkanEfek(); aturTombol(); tampilkanAnalisa(); tampilVolPutar(); aturSamping(P.sampingTutup); if (P.modeKerja !== "youtube") P.modeKerja = "rekam"; tampilModeKerja();
   segarkanTeks();
   await Promise.all([muatDaftar(), muatPustaka(), muatAudio()]);
   tampilkanKolom();
