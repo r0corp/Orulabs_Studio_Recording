@@ -761,3 +761,21 @@ canvas { display: block; width: 100%; height: 100%; }
 .nada-leg i.a { background: #cbd5e1; } .nada-leg i.m { background: #ec4899; } .nada-leg i.k { background: rgba(52,211,153,.7); }
 .nada-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .nada-stat div { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); } .nada-stat b { display: block; font-size: 16px; } .nada-stat small { color: var(--muted); font-size: 10.5px; }
+
+/* ===== Meter gaya Kapsul ===== */
+.vmeter.kapsul { grid-template-columns: 22px repeat(3, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 6px; padding: 10px 8px 8px; border-radius: 14px; }
+.vmeter.kapsul .ang { font: 700 11px Inter, sans-serif; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); transition: color .2s; }
+.vmeter.kapsul .ang.ideal { color: #34d399; } .vmeter.kapsul .ang.keras { color: #fbbf24; } .vmeter.kapsul .ang.bahaya { color: #ff4d5e; } .vmeter.kapsul .ang.pelan { color: var(--text); }
+.vmeter.kapsul .skala b { font-size: 9px; }
+.vmeter.kapsul .kap { position: relative; justify-self: center; width: 16px; min-height: 0; border-radius: 10px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+[data-ol-skin="glass-light"] .vmeter.kapsul .kap { background: rgba(15,23,42,.07); border-color: rgba(15,23,42,.12); }
+/* zona di bagian atas kapsul: merah di atas -3 dB, kuning -6..-3 dB */
+.vmeter.kapsul .kap::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10%; background: linear-gradient(180deg, rgba(255,77,94,.2) 0 50%, rgba(251,191,36,.16) 50% 100%); }
+.vmeter.kapsul .kap .isi { position: absolute; left: 2px; right: 2px; bottom: 2px; height: 0; border-radius: 8px; will-change: height;
+  background: linear-gradient(0deg, #14b8a6 0%, #34d399 55%, #a3e635 82%, #fbbf24 91%, #ff4d5e 96%); background-position: bottom; box-shadow: 0 0 12px rgba(52,211,153,.4); }
+.vmeter.kapsul .kap .tahan { position: absolute; left: 1px; right: 1px; height: 2px; bottom: 0; border-radius: 2px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.9); }
+[data-ol-skin="glass-light"] .vmeter.kapsul .kap .tahan { background: #0f172a; box-shadow: none; }
+.vmeter.kapsul .kap.klip { border-color: rgba(255,77,94,.9); box-shadow: 0 0 10px rgba(255,77,94,.6); }
+.vmeter.kapsul .ik { text-align: center; font-size: 13px; color: var(--muted); line-height: 1; }
+.vmeter.kapsul .ik.in { color: var(--p); }
+.vmeter.kapsul .ik small { display: block; font: 700 8.5px Inter, sans-serif; letter-spacing: .05em; margin-top: 3px; }

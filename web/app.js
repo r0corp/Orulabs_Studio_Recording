@@ -282,23 +282,29 @@ async function mulaiMonitor() {
 document.addEventListener("pointerdown", () => { if (M.ctx && M.ctx.state === "suspended") M.ctx.resume(); }, true);
 
 // Meter tegak: INPUT (puncak), VOKAL≈ dan MUSIK≈ (perkiraan dari pita frekuensi, karena vokal dan musik tercampur di mixer)
-const SEG = 30, BAR = ["#barIn", "#barVok", "#barMus"].map((id) => {
-  const el = $(id), seg = [];
-  for (let i = 0; i < SEG; i++) { const s = document.createElement("i"); el.insertBefore(s, el.querySelector(".tahan")); seg.push(s); }
-  return { el, seg, tahan: el.querySelector(".tahan"), tampil: -90, puncak: -90, waktuPuncak: 0 };
-});
 // Zona standar rekam vokal (puncak): ideal -18..-6 dB, agak keras -6..-3 dB, bahaya di atas -3 dB, pelan di bawah -18 dB
-const zonaSeg = (i) => { const atas = -58 + 2 * i; return atas > -3 ? "bahaya" : atas > -6 ? "keras" : atas >= -18 ? "ideal" : "pelan"; };
-const WARNA_ZONA = { bahaya: "#ff4d5e", keras: "#fbbf24", ideal: "#34d399", pelan: "#2a9d78" };
-const warnaSeg = (i) => WARNA_ZONA[zonaSeg(i)];
-BAR.forEach((b) => b.seg.forEach((s, i) => s.classList.add("z-" + zonaSeg(i))));
+const zonaDb = (d) => (d > -3 ? "bahaya" : d > -6 ? "keras" : d >= -18 ? "ideal" : "pelan");
+const BAR = [["#barIn", "#angIn"], ["#barVok", "#angVok"], ["#barMus", "#angMus"]].map(([id, ang]) => {
+  const el = $(id);
+  return { el, isi: el.querySelector(".isi"), tahan: el.querySelector(".tahan"), ang: $(ang), tampil: -90, puncak: -90, waktuPuncak: 0, angTerakhir: 0 };
+});
+// warna gradien mengikuti posisi dB di kapsul penuh (bukan ikut tinggi isi)
+const ukurKapsul = () => BAR.forEach((b) => (b.isi.style.backgroundSize = "100% " + (b.el.clientHeight - 4) + "px"));
+new ResizeObserver(ukurKapsul).observe($("#barIn")); ukurKapsul();
 let bufFrek = null, bufWaktu = null, clipSampai = 0;
 function isiBar(b, dbv, kini) {
   b.tampil = Math.max(dbv, b.tampil - 1.2);
   if (b.tampil >= b.puncak || kini - b.waktuPuncak > 1500) { b.puncak = b.tampil; b.waktuPuncak = kini; }
-  const n = Math.round(Math.max(0, Math.min(1, (b.tampil + 60) / 60)) * SEG);
-  b.seg.forEach((s, i) => { const nyala = i < n; if (s._n !== nyala) { s._n = nyala; s.style.background = nyala ? warnaSeg(i) : ""; } });
-  b.tahan.style.bottom = "calc(" + Math.max(0, Math.min(1, (b.puncak + 60) / 60)) * 100 + "% - 2px)";
+  const pos = (d) => Math.max(0, Math.min(1, (d + 60) / 60)) * 100;
+  b.isi.style.height = "calc(" + pos(b.tampil) + "% - 4px)";
+  b.tahan.style.bottom = "calc(" + pos(b.puncak) + "% - 2px)";
+  // angka puncak diperbarui 5x per detik supaya mudah dibaca
+  if (kini - b.angTerakhir > 200) {
+    b.angTerakhir = kini;
+    const aktif = b.puncak > -59;
+    b.ang.textContent = aktif ? Math.min(0, Math.round(b.puncak)) : "–";
+    b.ang.className = "ang" + (aktif ? " " + zonaDb(b.puncak) : "");
+  }
 }
 (function animasiMeter() {
   const kini = performance.now();
@@ -320,7 +326,7 @@ function isiBar(b, dbv, kini) {
     if (pt > 0 && rms > 0) { const dr = 20 * Math.log10(rms) + 3; dbVok = dr + 10 * Math.log10(Math.max(pv / pt, 1e-6)); dbMus = dr + 10 * Math.log10(Math.max(pm / pt, 1e-6)); }
   }
   isiBar(BAR[0], dbIn, kini); isiBar(BAR[1], dbVok, kini); isiBar(BAR[2], dbMus, kini);
-  $("#clipIn").classList.toggle("nyala", kini < clipSampai);
+  BAR[0].el.classList.toggle("klip", kini < clipSampai);
   if (M.rek) {
     const lama = (kini - M.mulai) / 1000; $("#timer").textContent = waktu(lama);
     // cincin tombol: sisa lagu YouTube bila merekam bersama lagu, selain itu berputar tiap menit

@@ -60,13 +60,16 @@
     <section class="card glass rec">
       <div class="card-h"><h3><i class="bi bi-record-circle"></i><span data-t="perekam">Perekam</span></h3><span class="rec-pill diam" id="recPill"><i></i><span data-t="siap">SIAP</span></span></div>
       <div class="rec-isi">
-        <div class="vmeter" id="vmeter">
-          <div class="skala"><b style="top:0%">0</b><b style="top:5%">-3</b><b style="top:10%">-6</b><b style="top:20%">-12</b><b style="top:30%">-18</b><b style="top:40%">-24</b><b style="top:60%">-36</b><b style="top:80%">-48</b><b style="top:100%">-60</b></div>
-          <div class="bar" id="barIn"><div class="tahan"></div></div>
-          <div class="bar" id="barVok"><div class="tahan"></div></div>
-          <div class="bar" id="barMus"><div class="tahan"></div></div>
-          <div></div><div class="clip"><span id="clipIn"></span><span></span><span></span></div>
-          <div></div><div class="nama in" data-t="mtrInput"></div><div class="nama" data-t="mtrVokal" data-t-title="mtrPerkiraan"></div><div class="nama" data-t="mtrMusik" data-t-title="mtrPerkiraan"></div>
+        <div class="vmeter kapsul" id="vmeter">
+          <div></div><b class="ang" id="angIn">–</b><b class="ang" id="angVok">–</b><b class="ang" id="angMus">–</b>
+          <div class="skala"><b style="top:0%">0</b><b style="top:10%">-6</b><b style="top:30%">-18</b><b style="top:60%">-36</b><b style="top:100%">-60</b></div>
+          <div class="kap" id="barIn"><div class="isi"></div><div class="tahan"></div></div>
+          <div class="kap" id="barVok"><div class="isi"></div><div class="tahan"></div></div>
+          <div class="kap" id="barMus"><div class="isi"></div><div class="tahan"></div></div>
+          <div></div>
+          <div class="ik in"><i class="bi bi-soundwave"></i><small data-t="mtrInput"></small></div>
+          <div class="ik" data-t-title="mtrPerkiraan"><i class="bi bi-mic-fill"></i><small data-t="mtrVokalK"></small></div>
+          <div class="ik" data-t-title="mtrPerkiraan"><i class="bi bi-music-note-beamed"></i><small data-t="mtrMusikK"></small></div>
         </div>
         <div class="rec-kanan">
           <div class="ready">
