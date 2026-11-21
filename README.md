@@ -133,7 +133,7 @@ Data aplikasi:
 
 | Data | Lokasi |
 |---|---|
-| Rekaman (WAV) | `Musik\Rekaman Karaoke` |
+| Rekaman (WAV), jalur musik, file WhatsApp | `Musik\Rekaman Karaoke` (bawaan), bisa dipindah di **Pengaturan → Folder rekaman** |
 | Pengaturan, Playlist saya | `%APPDATA%\OrulabStudio\` |
 
 ## Build dari kode sumber
