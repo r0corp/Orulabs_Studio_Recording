@@ -17,7 +17,7 @@ namespace OrulabStudio
     {
         public static int Port = 47821; // bisa diganti dengan --port <nomor> (untuk tes)
         /// <summary>Versi aplikasi. Naikkan setiap rilis (tag GitHub: v + versi).</summary>
-        public const string Versi = "1.3.4";
+        public const string Versi = "1.3.5";
         public static string Alamat { get { return "http://localhost:" + Port + "/"; } }
         static string folderWeb;
         static DateTime pingTerakhir = DateTime.Now;
@@ -138,7 +138,9 @@ namespace OrulabStudio
             switch (rute)
             {
                 case "ping":
-                    pingTerakhir = DateTime.Now; KirimJson(res, 200, "{\"ok\":true}"); return;
+                    pingTerakhir = DateTime.Now;
+                    if (q["rek"] == "1") rekamTerakhir = DateTime.Now; // jendela sedang merekam
+                    KirimJson(res, 200, "{\"ok\":true}"); return;
 
                 case "cari":
                     KirimJson(res, 200, CariYouTube(q["q"] ?? "")); return;
@@ -299,6 +301,9 @@ namespace OrulabStudio
                 case "update/pasang":
                 {
                     if (req.HttpMethod != "POST") { Kirim(res, 405, "text/plain", "POST"); return; }
+                    // Jangan memperbarui selama merekam: server dijalankan ulang dan jalur musik yang sedang direkam akan hilang
+                    if (RekamSuaraLaptop.Aktif || (DateTime.Now - rekamTerakhir).TotalSeconds < 25)
+                    { KirimJson(res, 200, "{\"ok\":false,\"sibuk\":true,\"galat\":\"Sedang merekam. Update dipasang setelah rekaman selesai.\"}"); return; }
                     string hasil = Pembaruan.Siapkan();
                     KirimJson(res, 200, hasil);
                     if (hasil.Contains("\"ok\":true"))
@@ -386,6 +391,8 @@ namespace OrulabStudio
 
         /// <summary>Folder jalur musik (di dalam folder rekaman, tersembunyi dari daftar karena bukan file *.wav di akar).</summary>
         static string FolderMusik { get { return Path.Combine(FolderRekaman, "Jalur musik"); } }
+
+        static DateTime rekamTerakhir = DateTime.MinValue;
 
         static string PathMusik(string nama)
         {

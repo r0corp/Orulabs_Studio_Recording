@@ -384,6 +384,7 @@ async function mulaiRekam() {
     try { const j = await apiJson("musik/mulai", { method: "POST" }); M.jalurMusik = !!j.ok; if (!j.ok) toast(t("jalurGagal"), true); } catch { toast(t("jalurGagal"), true); }
   }
   M.potongan = []; M.rek = true; M.mulai = performance.now();
+  api("ping?rek=1").catch(() => {}); // beri tahu server: sedang merekam (update ditunda)
   // Rekam langsung dari mic dengan jam mic sendiri. Lewat AudioContext, jamnya ikut speaker (Bluetooth) dan
   // Chrome membuang potongan suara saat Bluetooth tersendat, sehingga rekaman terdengar makin cepat.
   M.langsung = null;
@@ -442,7 +443,11 @@ async function selesaiRekam() {
   if (P.keraskanOto) data = dsp.keraskanRekaman(data, rate);
   try {
     const j = await apiJson("rekaman/simpan?" + q({ nama: namaRekamanBaru() }), { method: "POST", body: dsp.keWav(data, rate) });
-    if (M.jalurMusik) { await api("musik/selesai?" + q({ nama: j.nama }), { method: "POST" }).catch(() => {}); M.jalurMusik = false; toast(t("jalurSiap")); }
+    if (M.jalurMusik) {
+      M.jalurMusik = false;
+      const m = await apiJson("musik/selesai?" + q({ nama: j.nama }), { method: "POST" }).catch(() => ({ ok: false }));
+      toast(t(m.ok ? "jalurSiap" : "jalurHilang"), !m.ok);
+    }
     toast(t("tersimpan") + ": " + j.nama + (P.keraskanOto ? " (" + t("dikeraskan") + ")" : ""));
     await muatDaftar(); tampilkanRekaman(j.nama, data, rate);
     $("#btnRapikan").classList.add("baru"); toast(t("rapikanSiap"));
@@ -1369,7 +1374,7 @@ function segarkanTeks() {
   // Bila versi berubah (aplikasi baru diperbarui), muat ulang supaya tampilan ikut versi baru.
   let versiAwal = null;
   const ping = async () => {
-    try { await api("ping"); const v = (await apiJson("versi")).versi; if (versiAwal === null) versiAwal = v; else if (v !== versiAwal && !M.rek) location.reload(); } catch {}
+    try { await api("ping" + (M.rek ? "?rek=1" : "")); const v = (await apiJson("versi")).versi; if (versiAwal === null) versiAwal = v; else if (v !== versiAwal && !M.rek) location.reload(); } catch {}
   };
   setInterval(ping, 10000); ping();
   cekUpdate(false);
